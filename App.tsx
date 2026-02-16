@@ -5,6 +5,7 @@ import { IngestView } from './views/IngestView';
 import { ProposalView } from './views/ProposalView';
 import { calculateMonthlyLeakage, calculateAnnualLeakage } from './utils/calculations';
 import { Zap } from 'lucide-react';
+import { CSRChatbot } from './components/CSRChatbot';
 
 const STORAGE_KEY = 'flowstack_os_state_v1';
 
@@ -196,6 +197,7 @@ const App: React.FC = () => {
           <div>V 1.0.5</div>
         </div>
       </footer>
+      <CSRChatbot />
     </div>
   );
 };
