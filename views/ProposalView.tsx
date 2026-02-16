@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
