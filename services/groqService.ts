@@ -1,5 +1,6 @@
 import { AppState } from '../types';
 import { defaultKnowledgeBase, getRelevantKnowledge, getProductDetails } from './knowledgeBase';
+import { HIGH_VALUE_THRESHOLD } from '../utils/calculations';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
@@ -17,10 +18,16 @@ export const generateProposal = async (data: AppState): Promise<string> => {
     const { monthlyLeakage, annualLeakage } = data.calculatedMetrics;
     const recoveryPotential = annualLeakage * 0.7;
     const efficiencyGain = 35;
+    const isHighValue = monthlyLeakage > HIGH_VALUE_THRESHOLD;
 
     // Get FlowStackOS knowledge base context
     const kb = defaultKnowledgeBase;
     const nicheInsights = getRelevantKnowledge(data.ingest.niche);
+
+    // Pricing Logic: Only show relevant tiers
+    const relevantTiers = isHighValue
+        ? "Tier 1: ₱25,000 ($429 USD) — Landing Page Only\nTier 3: ₱450,000 ($7,699 USD) — Full FlowStackOS Implementation"
+        : "Tier 1: ₱25,000 ($429 USD) — Landing Page Only\nTier 2: ₱85,000 ($1,499 USD) — BookedOS Build";
 
     const systemPrompt = `You are the FlowStackOS Virtual Architect, an elite Revenue Operations consultant.
 
@@ -82,9 +89,11 @@ ${kb.proposalTemplates.implementationApproach}
 ${kb.proposalTemplates.valueProposition}
 
 5. INVESTMENT & ROI PROJECTION
-Reference our standard pricing tiers (Tier 1: ₱25K/$429, Tier 2: ₱85K/$1,499, Tier 3: ₱450K/$7,699)
-Calculate specific ROI based on the ${recoveryPotential.toLocaleString()} recovery potential
-Include ongoing support: ₱15K/month ($259 USD)
+Based on our analysis, we recommend the following relevant investment tiers for your scale:
+${relevantTiers}
+
+Calculate specific ROI based on the ${recoveryPotential.toLocaleString()} recovery potential.
+Include ongoing support: ₱15K/month ($259 USD).
 
 6. NEXT STEPS
 - 15-30 minute Kickoff Call to confirm routing rules and technical requirements
@@ -101,6 +110,7 @@ FORMAT REQUIREMENTS:
 
 Make this proposal highly credible, technically sound, and ROI-focused. Show deep understanding of their pain points and demonstrate how FlowStackOS architecture solves them systematically.
 `;
+
 
     const requestBody = {
         model: 'llama-3.3-70b-versatile',
