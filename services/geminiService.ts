@@ -3,23 +3,17 @@ import { AppState } from '../types';
 export const generateProposal = async (data: AppState): Promise<string> => {
   const getApiKey = () => {
     // Standard Vite pattern for static replacement
-    const k1 = import.meta.env.VITE_GROK_API_KEY;
-    const k2 = import.meta.env.VITE_GEMINI_API_KEY;
-    if (k1 && k1 !== "PLACEHOLDER_API_KEY") return k1;
-    if (k2 && k2 !== "PLACEHOLDER_API_KEY") return k2;
+    const key = import.meta.env.VITE_GROK_API_KEY;
+    if (key && key !== "PLACEHOLDER_API_KEY") return key;
     return null;
   };
 
   const apiKey = getApiKey();
 
   if (!apiKey) {
-    const k1 = import.meta.env.VITE_GROK_API_KEY;
-    const k2 = import.meta.env.VITE_GEMINI_API_KEY;
-    const status = [
-      `VITE_GROK: ${k1 ? (k1 === "PLACEHOLDER_API_KEY" ? 'placeholder' : 'found') : 'missing'}`,
-      `VITE_GEMINI: ${k2 ? (k2 === "PLACEHOLDER_API_KEY" ? 'placeholder' : 'found') : 'missing'}`
-    ].join(', ');
-    throw new Error(`AI Uplink Offline: Security Key Missing. Status: [${status}]`);
+    const rawKey = import.meta.env.VITE_GROK_API_KEY;
+    const status = rawKey === "PLACEHOLDER_API_KEY" ? "placeholder_detected" : (rawKey ? "invalid_key_detected" : "variable_missing");
+    throw new Error(`AI Uplink Offline: Grok Security Key Missing. System Status: [${status}]`);
   }
 
   if (!data.calculatedMetrics) {
