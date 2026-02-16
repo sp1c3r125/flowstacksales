@@ -20,8 +20,14 @@ export const generateProposal = async (data: AppState): Promise<string> => {
 
   const apiKey = getApiKey();
 
-  if (!apiKey) {
-    throw new Error("AI API Key is missing from environment variables");
+  if (!apiKey || apiKey === "PLACEHOLDER_API_KEY") {
+    const envSources = [
+      `VITE_GROK: ${!!import.meta.env?.VITE_GROK_API_KEY}`,
+      `VITE_GEMINI: ${!!import.meta.env?.VITE_GEMINI_API_KEY}`,
+      `PROC_GROK: ${!!(typeof process !== 'undefined' && process.env?.VITE_GROK_API_KEY)}`,
+      `PROC_API: ${!!(typeof process !== 'undefined' && process.env?.API_KEY)}`
+    ].join(', ');
+    throw new Error(`AI Uplink Offline: Security Key Missing. Internal Status: [${envSources}]`);
   }
 
   if (!data.calculatedMetrics) {

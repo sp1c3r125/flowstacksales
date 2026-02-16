@@ -64,9 +64,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           setProposal(text);
           setLoading(false);
         }
-      } catch (e) {
+      } catch (e: any) {
         if (isMounted) {
-          setProposal("Error generating proposal.");
+          setProposal(`SYSTEM FAULT: ${e.message || "Unknown AI Diagnostic Error"}`);
           setLoading(false);
         }
       }
