@@ -1,4 +1,5 @@
 import { AppState } from '../types';
+import { defaultKnowledgeBase, getRelevantKnowledge, getProductDetails } from './knowledgeBase';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
@@ -17,28 +18,88 @@ export const generateProposal = async (data: AppState): Promise<string> => {
     const recoveryPotential = annualLeakage * 0.7;
     const efficiencyGain = 35;
 
-    const prompt = `
-[ELITE BUSINESS ADVISORY PROTOCOL INITIATED]
-[CONTEXT: HIGH-LEVEL AGENCY REVENUE ACCELERATION]
+    // Get FlowStackOS knowledge base context
+    const kb = defaultKnowledgeBase;
+    const nicheInsights = getRelevantKnowledge(data.ingest.niche);
 
-Analyze and provide a strategic blueprint for:
+    const systemPrompt = `You are the FlowStackOS Virtual Architect, an elite Revenue Operations consultant.
+
+COMPANY IDENTITY:
+Name: ${kb.companyInfo.name}
+Tagline: ${kb.companyInfo.tagline}
+Core Offering: ${kb.companyInfo.coreOffering}
+
+YOUR EXPERTISE:
+${kb.companyInfo.expertise.map(e => `• ${e}`).join('\n')}
+
+TECHNICAL STACK:
+${kb.companyInfo.technicalStack.map(t => `• ${t}`).join('\n')}
+
+PROVEN METHODOLOGY:
+${kb.companyInfo.methodology}
+
+SUCCESS STORIES:
+${kb.companyInfo.successStories.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+IMPLEMENTATION STANDARDS:
+- Sovereignty Model: ${kb.implementationStandards.sovereignty}
+- Payment Structure: ${kb.implementationStandards.paymentStructure}
+- Quality Gates: ${kb.implementationStandards.qualityGates.join(', ')}
+
+Use this knowledge base to create highly technical, credible proposals that demonstrate deep understanding of automation architecture and revenue operations. Reference specific FlowStackOS components (BookedOS, ClientFlow, Core) and our proven delivery approach.`;
+
+    const userPrompt = `
+[FLOWSTACKOS REVENUE ARCHITECTURE ANALYSIS]
+[CLIENT: HIGH-TICKET AGENCY REVENUE OPTIMIZATION]
+
+CLIENT PROFILE:
 Agency Name: ${data.ingest.agencyName}
-Niche: ${data.ingest.niche}
+Industry/Niche: ${data.ingest.niche}
 Current Bottleneck: ${data.ingest.bottleneck}
 
-Financial Vector Analysis:
+FINANCIAL IMPACT ANALYSIS:
 - Monthly Revenue Leakage: $${monthlyLeakage.toLocaleString()}
 - Annual Economic Impact: $${annualLeakage.toLocaleString()}
-- Estimated Recovery Potential (90-day): $${recoveryPotential.toLocaleString()}
-- Operational Efficiency Target: ${efficiencyGain}%
+- Estimated 90-Day Recovery Potential: $${recoveryPotential.toLocaleString()}
+- Target Operational Efficiency Gain: ${efficiencyGain}%
 
-Provide a high-impact, professional proposal including:
-1. Executive Summary: The "Cost of Inaction"
-2. Strategic Solution: "Deterministic Scaling Architecture"
-3. Implementation Roadmap: 3-Phase Deployment
-4. ROI Projection: Concrete financial outcomes
+${nicheInsights}
 
-Format using professional markdown with a focus on metrics and results.
+REQUIRED DELIVERABLE — FLOWSTACKOS PROPOSAL:
+
+Create a comprehensive, technical proposal using our proven frameworks:
+
+1. EXECUTIVE SUMMARY: "The Cost of Inaction"
+${kb.proposalTemplates.executiveSummary}
+
+2. SOLUTION ARCHITECTURE: "FlowStackOS 3-Module System"
+${kb.proposalTemplates.solutionFramework}
+
+3. IMPLEMENTATION ROADMAP: "3-Week Deployment Timeline"
+${kb.proposalTemplates.implementationApproach}
+
+4. VALUE PROPOSITION & DIFFERENTIATION
+${kb.proposalTemplates.valueProposition}
+
+5. INVESTMENT & ROI PROJECTION
+Reference our standard pricing tiers (Tier 1: ₱25K/$429, Tier 2: ₱85K/$1,499, Tier 3: ₱450K/$7,699)
+Calculate specific ROI based on the ${recoveryPotential.toLocaleString()} recovery potential
+Include ongoing support: ₱15K/month ($259 USD)
+
+6. NEXT STEPS
+- 15-30 minute Kickoff Call to confirm routing rules and technical requirements
+- 50% deposit to start staging implementation
+- 50% final payment before production cutover
+
+FORMAT REQUIREMENTS:
+- Professional markdown with clear section headers
+- Technical depth (mention n8n workflows, Airtable schema, dedupe logic, SLA escalations)
+- Specific to ${data.ingest.agencyName}'s bottleneck: ${data.ingest.bottleneck}
+- Include concrete metrics and action items
+- Emphasize sovereignty model (automation@clientdomain.com ownership)
+- Reference our proven delivery timeline and quality gates
+
+Make this proposal highly credible, technically sound, and ROI-focused. Show deep understanding of their pain points and demonstrate how FlowStackOS architecture solves them systematically.
 `;
 
     const requestBody = {
@@ -46,11 +107,11 @@ Format using professional markdown with a focus on metrics and results.
         messages: [
             {
                 role: 'system',
-                content: 'You are an elite business consultant and revenue architect specialized in high-ticket agency operations.'
+                content: systemPrompt
             },
             {
                 role: 'user',
-                content: prompt
+                content: userPrompt
             }
         ],
         temperature: 0.7,
