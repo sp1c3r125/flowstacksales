@@ -1,33 +1,25 @@
 import { AppState } from '../types';
 
 export const generateProposal = async (data: AppState): Promise<string> => {
-  // Robust API key retrieval for different environments (Vercel, Vite, Local)
   const getApiKey = () => {
-    try {
-      if (typeof import.meta !== 'undefined' && import.meta.env) {
-        return import.meta.env.VITE_GROK_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
-      }
-    } catch (e) { }
-
-    try {
-      if (typeof process !== 'undefined' && process.env) {
-        return process.env.VITE_GROK_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
-      }
-    } catch (e) { }
-
+    // Standard Vite pattern for static replacement
+    const k1 = import.meta.env.VITE_GROK_API_KEY;
+    const k2 = import.meta.env.VITE_GEMINI_API_KEY;
+    if (k1 && k1 !== "PLACEHOLDER_API_KEY") return k1;
+    if (k2 && k2 !== "PLACEHOLDER_API_KEY") return k2;
     return null;
   };
 
   const apiKey = getApiKey();
 
-  if (!apiKey || apiKey === "PLACEHOLDER_API_KEY") {
-    const envSources = [
-      `VITE_GROK: ${!!import.meta.env?.VITE_GROK_API_KEY}`,
-      `VITE_GEMINI: ${!!import.meta.env?.VITE_GEMINI_API_KEY}`,
-      `PROC_GROK: ${!!(typeof process !== 'undefined' && process.env?.VITE_GROK_API_KEY)}`,
-      `PROC_API: ${!!(typeof process !== 'undefined' && process.env?.API_KEY)}`
+  if (!apiKey) {
+    const k1 = import.meta.env.VITE_GROK_API_KEY;
+    const k2 = import.meta.env.VITE_GEMINI_API_KEY;
+    const status = [
+      `VITE_GROK: ${k1 ? (k1 === "PLACEHOLDER_API_KEY" ? 'placeholder' : 'found') : 'missing'}`,
+      `VITE_GEMINI: ${k2 ? (k2 === "PLACEHOLDER_API_KEY" ? 'placeholder' : 'found') : 'missing'}`
     ].join(', ');
-    throw new Error(`AI Uplink Offline: Security Key Missing. Internal Status: [${envSources}]`);
+    throw new Error(`AI Uplink Offline: Security Key Missing. Status: [${status}]`);
   }
 
   if (!data.calculatedMetrics) {
