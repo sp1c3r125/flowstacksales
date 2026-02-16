@@ -1,17 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
 import { AppState } from '../types';
 
-// Initialize Gemini Client
-const getClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("VITE_GEMINI_API_KEY is missing from environment variables");
-  }
-  return new GoogleGenAI({ apiKey });
-};
-
 export const generateProposal = async (data: AppState): Promise<string> => {
-  const client = getClient();
+  // Support both VITE_GROK_API_KEY and VITE_GEMINI_API_KEY for convenience
+  const apiKey = import.meta.env.VITE_GROK_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("AI API Key is missing from environment variables");
+  }
 
   if (!data.calculatedMetrics) {
     throw new Error("Metrics not calculated");
@@ -24,9 +19,6 @@ export const generateProposal = async (data: AppState): Promise<string> => {
   const threshold = 100000; // 100k monthly
   const isHighValue = monthlyLeakage > threshold;
 
-  // Aligning with new Tech Stack:
-  // Low Leakage -> Tier 2 (BookedOS)
-  // High Leakage -> Tier 3 (Full FlowStackOS)
   const recommendedTier = isHighValue ? "Tier 3 (Full FlowStackOS)" : "Tier 2 (BookedOS Install)";
   const setupFee = isHighValue ? "₱550,000" : "₱45,000";
 
@@ -62,13 +54,31 @@ export const generateProposal = async (data: AppState): Promise<string> => {
   `;
 
   try {
-    const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'grok-beta',
+        messages: [
+          { role: 'system', content: 'You are an elite business consultant and revenue architect.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7
+      })
     });
-    return response.text || "System Error: Unable to generate proposal sequence.";
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Grok API Error: ${response.status} ${JSON.stringify(errorData)}`);
+    }
+
+    const result = await response.json();
+    return result.choices?.[0]?.message?.content || "System Error: Unable to generate proposal sequence.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("AI API Error:", error);
     return "CRITICAL FAILURE: AI Uplink Severed. Manual override required.";
   }
 };
