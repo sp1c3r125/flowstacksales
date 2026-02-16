@@ -1,8 +1,24 @@
 import { AppState } from '../types';
 
 export const generateProposal = async (data: AppState): Promise<string> => {
-  // Support both VITE_GROK_API_KEY and VITE_GEMINI_API_KEY for convenience
-  const apiKey = import.meta.env.VITE_GROK_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+  // Robust API key retrieval for different environments (Vercel, Vite, Local)
+  const getApiKey = () => {
+    try {
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        return import.meta.env.VITE_GROK_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      }
+    } catch (e) { }
+
+    try {
+      if (typeof process !== 'undefined' && process.env) {
+        return process.env.VITE_GROK_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
+      }
+    } catch (e) { }
+
+    return null;
+  };
+
+  const apiKey = getApiKey();
 
   if (!apiKey) {
     throw new Error("AI API Key is missing from environment variables");

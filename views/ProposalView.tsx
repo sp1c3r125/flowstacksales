@@ -194,12 +194,12 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <article className="prose prose-invert max-w-none">
                 <ReactMarkdown
                   components={{
-                    h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4" {...props} />,
-                    h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider flex items-center gap-2" {...props} />,
-                    p: ({ node, ...props }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm" {...props} />,
-                    ul: ({ node, ...props }) => <ul className="space-y-4 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50" {...props} />,
-                    li: ({ node, ...props }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50 hover:border-blue-500/50 transition-colors" {...props} />,
-                    strong: ({ node, ...props }) => <strong className="text-white font-bold mr-2 inline-block" {...props} />
+                    h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider flex items-center gap-2">{children}</h2>,
+                    p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
+                    ul: ({ children }) => <ul className="space-y-4 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
+                    li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50 hover:border-blue-500/50 transition-colors">{children}</li>,
+                    strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>
                   }}
                 >
                   {streamingText}

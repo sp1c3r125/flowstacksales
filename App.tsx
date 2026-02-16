@@ -41,6 +41,45 @@ const getInitialState = (): AppState => {
   };
 };
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-10 bg-slate-950 text-red-400 font-mono text-sm border-2 border-red-500 rounded-xl m-4">
+          <h1 className="text-xl font-bold mb-4">CRITICAL SYSTEM ERROR</h1>
+          <p className="mb-4">Internal component crash detected. Fault details below:</p>
+          <pre className="bg-black p-4 rounded overflow-auto whitespace-pre-wrap border border-red-900/50">
+            {this.state.error?.toString()}
+            {"\n\nStack Trace:\n"}
+            {this.state.error?.stack}
+          </pre>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500 transition-colors"
+          >
+            REBOOT SYSTEM
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(getInitialState);
 
@@ -123,27 +162,29 @@ const App: React.FC = () => {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-20" />
 
         <div className="relative py-12 px-4">
-          {appState.step === 'calculator' && (
-            <CalculatorView
-              data={appState.calculator}
-              onUpdate={updateCalculator}
-              onNext={goToIngest}
-            />
-          )}
-          {appState.step === 'ingest' && (
-            <IngestView
-              data={appState.ingest}
-              onUpdate={updateIngest}
-              onNext={goToProposal}
-              onBack={goBackToCalculator}
-            />
-          )}
-          {appState.step === 'proposal' && (
-            <ProposalView
-              appState={appState}
-              onReset={resetApp}
-            />
-          )}
+          <ErrorBoundary>
+            {appState.step === 'calculator' && (
+              <CalculatorView
+                data={appState.calculator}
+                onUpdate={updateCalculator}
+                onNext={goToIngest}
+              />
+            )}
+            {appState.step === 'ingest' && (
+              <IngestView
+                data={appState.ingest}
+                onUpdate={updateIngest}
+                onNext={goToProposal}
+                onBack={goBackToCalculator}
+              />
+            )}
+            {appState.step === 'proposal' && (
+              <ProposalView
+                appState={appState}
+                onReset={resetApp}
+              />
+            )}
+          </ErrorBoundary>
         </div>
       </main>
 
