@@ -2,13 +2,9 @@ import { AppState } from '../types';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// DEBUG - Remove after testing
-console.log('🔑 Key loaded:', GROQ_API_KEY ? 'YES' : 'NO');
-console.log('🔑 Key starts with gsk_:', GROQ_API_KEY?.startsWith('gsk_'));
-console.log('🔑 Key length:', GROQ_API_KEY?.length);
-console.log('🔑 First 10 chars:', GROQ_API_KEY?.substring(0, 10));
-
 export const generateProposal = async (data: AppState): Promise<string> => {
+    console.log('API Key check:', GROQ_API_KEY ? 'EXISTS' : 'MISSING');
+
     if (!GROQ_API_KEY || GROQ_API_KEY === "PLACEHOLDER_API_KEY") {
         throw new Error("GROQ API key is missing. Please set VITE_GROQ_API_KEY in .env.local");
     }
@@ -61,8 +57,6 @@ Format using professional markdown with a focus on metrics and results.
         max_tokens: 4096
     };
 
-    console.log('📤 Sending request to Groq API...');
-
     try {
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -73,19 +67,16 @@ Format using professional markdown with a focus on metrics and results.
             body: JSON.stringify(requestBody)
         });
 
-        console.log('📥 Response status:', response.status);
-
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Error response:', errorText);
-            throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Groq API Error Details:', errorData);
+            throw new Error(`Groq API Error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
 
         const result = await response.json();
-        console.log('✅ Success!');
         return result.choices?.[0]?.message?.content || "System Error: Unable to generate proposal content.";
     } catch (error: any) {
-        console.error("AI API Error:", error);
+        console.error("Full AI API Error:", error);
         throw error;
     }
 };
