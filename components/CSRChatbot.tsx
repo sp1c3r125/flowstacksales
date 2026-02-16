@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { defaultKnowledgeBase, getProductDetails } from '../services/knowledgeBase';
+import { defaultKnowledgeBase } from '../services/knowledgeBase';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
@@ -14,7 +14,7 @@ export const CSRChatbot: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            content: "Hi! I'm the FlowStackOS Virtual Assistant. I can help you understand our automation systems, pricing, and implementation process. What would you like to know?",
+            content: "Hi! I'm here for quick questions about FlowStackOS. For a detailed proposal tailored to your needs, use the form above. What would you like to know?",
             timestamp: new Date()
         }
     ]);
@@ -46,26 +46,45 @@ export const CSRChatbot: React.FC = () => {
         try {
             const kb = defaultKnowledgeBase;
 
-            const systemPrompt = `You are the FlowStackOS Virtual Assistant. Your goal is to provide BRIEF, conversational assistance.
+            const systemPrompt = `You are the FlowStackOS Virtual Assistant - a helpful chatbot for quick questions.
+
+CRITICAL RULES:
+- Keep ALL responses VERY SHORT (2-3 sentences maximum)
+- Give brief overview info only, NOT detailed explanations
+- Direct users to the proposal generator for complete information
+- Be conversational and friendly, not sales-pushy
+- If asked for detailed info, say "For a full breakdown, generate a proposal using the form above"
 
 COMPANY: ${kb.companyInfo.name}
-TAGLINE: ${kb.companyInfo.tagline}
+WHAT WE DO: ${kb.companyInfo.coreOffering}
 
-YOUR BEHAVIOR:
-- Responses MUST BE SHORT (2-3 sentences max).
-- Provide high-level overview only.
-- DO NOT provide deep technical implementation details or full pricing tables.
-- ALWAYS encourage the user to use the "Proposal Generator" (the main app steps) for comprehensive details, accurate ₱/USD pricing, and technical architecture.
-- Example: "Our BookedOS handles everything from lead capture to automated follow-up. For a full breakdown of the modules and a custom investment quote, I recommend completing our 3-step proposal generator!"
+QUICK INFO TO SHARE:
+**Products:**
+- FlowStackOS Full (₱450K) - Complete automation system
+- BookedOS (₱85K) - Lead capture & booking
+- Landing Page Only (₱25K) - Single conversion page
+- AI CSR Voice Agent - Custom pricing
 
-CORE TOPICS:
-- Product Overview (BookedOS, ClientFlow, Voice Agents)
-- Sovereignty Model (Client owns the accounts)
-- Timelines (Approx. 3 weeks)
+**Timeline:** 3 weeks standard
+**Payment:** 50% to start, 50% before go-live
+**Support:** ₱15K/month ongoing
 
-STYLE: 
-Friendly, helpful, concise, not pushy.
-If a user asks for specific pricing, give the base tier info but direct them to the generator for a custom proposal.`;
+**Stack:** n8n, Airtable, Slack, Gmail
+**Key Feature:** You own everything via automation@yourdomain.com
+
+CONVERSATION STYLE:
+✅ "BookedOS costs ₱85K and takes 2 weeks. Want details? Generate a proposal above!"
+✅ "We use n8n, Airtable, Slack, and Gmail. The full architecture is in the proposal."
+✅ "3 weeks total. Week 1 is setup, Week 2 is automation, Week 3 is launch."
+
+❌ Don't write long paragraphs
+❌ Don't explain every detail
+❌ Don't list every feature - just mention key points
+
+WHEN ASKED FOR DETAILS:
+Respond with: "That's covered in detail in the proposal. Fill out the form above to get a custom breakdown for your situation!"
+
+Remember: You're for QUICK questions. The proposal generator is for DETAILED information.`;
 
             const conversationHistory = messages.slice(-6).map(msg => ({
                 role: msg.role,
@@ -86,7 +105,7 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                         { role: 'user', content: input }
                     ],
                     temperature: 0.7,
-                    max_tokens: 800
+                    max_tokens: 300
                 })
             });
 
@@ -106,7 +125,7 @@ If a user asks for specific pricing, give the base tier info but direct them to 
             console.error('Chatbot error:', error);
             const errorMessage: Message = {
                 role: 'assistant',
-                content: "I'm having trouble connecting right now. Please try again or contact us directly for assistance.",
+                content: "I'm having trouble connecting. Try the proposal form above for detailed info!",
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMessage]);
@@ -123,10 +142,10 @@ If a user asks for specific pricing, give the base tier info but direct them to 
     };
 
     const suggestedQuestions = [
-        "What's the difference between BookedOS and Full FlowStackOS?",
-        "How does the sovereignty model work?",
-        "What's your implementation timeline?",
-        "Tell me about the AI CSR Voice Agent"
+        "What's the pricing?",
+        "How long does it take?",
+        "What tools do you use?",
+        "What's the sovereignty model?"
     ];
 
     return (
@@ -141,8 +160,8 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        !
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        ?
                     </span>
                 </button>
             )}
@@ -153,8 +172,8 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg flex justify-between items-center">
                         <div>
-                            <h3 className="font-bold text-lg">FlowStackOS Assistant</h3>
-                            <p className="text-xs text-blue-100">Ask me anything about our automation systems</p>
+                            <h3 className="font-bold text-lg">Quick Help</h3>
+                            <p className="text-xs text-blue-100">For full details, generate a proposal ↑</p>
                         </div>
                         <button
                             onClick={() => setIsOpen(false)}
@@ -176,8 +195,8 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                             >
                                 <div
                                     className={`max-w-[80%] rounded-lg p-3 ${message.role === 'user'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-800 border border-gray-200'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-white text-gray-800 border border-gray-200'
                                         }`}
                                 >
                                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -203,10 +222,10 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Suggested Questions (show only when conversation is fresh) */}
+                    {/* Suggested Questions */}
                     {messages.length <= 2 && (
                         <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
-                            <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+                            <p className="text-xs text-gray-500 mb-2">Quick questions:</p>
                             <div className="space-y-1">
                                 {suggestedQuestions.map((question, index) => (
                                     <button
@@ -229,7 +248,7 @@ If a user asks for specific pricing, give the base tier info but direct them to 
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyPress={handleKeyPress}
-                                placeholder="Ask about FlowStackOS..."
+                                placeholder="Quick question..."
                                 className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 disabled={isLoading}
                             />
