@@ -2,9 +2,14 @@ import { AppState } from '../types';
 
 export const generateProposal = async (data: AppState): Promise<string> => {
   const getApiKey = () => {
-    // Standard Vite pattern for static replacement
-    const key = import.meta.env.VITE_GROK_API_KEY;
-    if (key && key !== "PLACEHOLDER_API_KEY") return key;
+    // 1. Check global injected variable (from vite.config.ts)
+    const globalKey = (window as any).__GROK_API_KEY__;
+    if (globalKey && globalKey !== "PLACEHOLDER_API_KEY" && globalKey !== "MISSING_IN_CONFIG") return globalKey;
+
+    // 2. Check standard Vite env
+    const viteKey = import.meta.env.VITE_GROK_API_KEY;
+    if (viteKey && viteKey !== "PLACEHOLDER_API_KEY") return viteKey;
+
     return null;
   };
 
@@ -12,8 +17,12 @@ export const generateProposal = async (data: AppState): Promise<string> => {
 
   if (!apiKey) {
     const rawKey = import.meta.env.VITE_GROK_API_KEY;
-    const status = rawKey === "PLACEHOLDER_API_KEY" ? "placeholder_detected" : (rawKey ? "invalid_key_detected" : "variable_missing");
-    throw new Error(`AI Uplink Offline: Grok Security Key Missing. System Status: [${status}]`);
+    const globalKey = (window as any).__GROK_API_KEY__;
+    const status = [
+      `VITE_ENV: ${rawKey ? (rawKey === "PLACEHOLDER_API_KEY" ? "placeholder" : "found") : "missing"}`,
+      `GLOBAL: ${globalKey || "missing"}`
+    ].join(' | ');
+    throw new Error(`AI Uplink Offline: Security Key Path Failed. Status: [${status}]`);
   }
 
   if (!data.calculatedMetrics) {
