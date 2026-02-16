@@ -10,10 +10,6 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
     },
     plugins: [react()],
-    define: {
-      'process.env.VITE_GROK_API_KEY': JSON.stringify(env.VITE_GROK_API_KEY),
-      '__GROK_API_KEY__': JSON.stringify(env.VITE_GROK_API_KEY || env.GROK_API_KEY || "MISSING_IN_CONFIG")
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -3,7 +3,7 @@ import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
 import { AppState } from '../types';
-import { generateProposal } from '../services/geminiService';
+import { generateProposal } from '../services/groqService';
 import { calculateAnnualLeakage, calculateMonthlyLeakage, checkIsHighValue, formatCurrency, HIGH_VALUE_THRESHOLD } from '../utils/calculations';
 import { Terminal as TerminalIcon, RefreshCw, Download, FileText, FileBarChart, Server, Workflow, Database, ShieldCheck, Cpu, CheckCircle, Wifi, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
