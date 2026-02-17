@@ -10,7 +10,7 @@ interface Message {
 }
 
 export const CSRChatbot: React.FC = () => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
@@ -195,8 +195,8 @@ Remember: You're for QUICK questions. The proposal generator is for DETAILED inf
                             >
                                 <div
                                     className={`max-w-[80%] rounded-lg p-3 ${message.role === 'user'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white text-gray-800 border border-gray-200'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-white text-gray-800 border border-gray-200'
                                         }`}
                                 >
                                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
