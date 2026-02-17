@@ -63,6 +63,26 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         if (isMounted) {
           setProposal(text);
           setLoading(false);
+
+          // Send lead to n8n automatically
+          try {
+            await fetch('/api/lead', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                step: 'proposal',
+                calculator: appState.calculator,
+                ingest: appState.ingest,
+                calculatedMetrics: appState.calculatedMetrics,
+                proposalGenerated: true,
+                timestamp: new Date().toISOString(),
+              }),
+            });
+            console.log('Lead sent to n8n successfully');
+          } catch (error) {
+            console.error('Failed to send lead to n8n:', error);
+            // Don't block user if webhook fails
+          }
         }
       } catch (e: any) {
         if (isMounted) {
@@ -131,13 +151,26 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       await delay(1200);
       addLog("> UPLOAD PACKET: [====================] 100%");
       await delay(500);
+
+      // Actual API Call to forward lead
+      const response = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appState)
+      });
+
+      if (!response.ok) {
+        throw new Error("UPLINK FAILURE");
+      }
+
       addLog("> 200 OK: LEAD CAPTURED.");
       addLog("> PROTOCOL DEPLOYMENT: CONFIRMED.");
       await delay(800);
       setDeployStatus('success');
     } catch (error) {
       addLog("> ERROR: CONNECTION REFUSED");
-      setDeployStatus('idle'); // Allow retry in real app, but for demo we just assume success or stuck
+      console.error("Deployment Error:", error);
+      setDeployStatus('idle');
     }
   };
 

@@ -1,16 +1,8 @@
 import { AppState } from '../types';
-import { defaultKnowledgeBase, getRelevantKnowledge, getProductDetails } from './knowledgeBase';
+import { defaultKnowledgeBase, getRelevantKnowledge } from './knowledgeBase';
 import { HIGH_VALUE_THRESHOLD } from '../utils/calculations';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-
 export const generateProposal = async (data: AppState): Promise<string> => {
-    console.log('API Key check:', GROQ_API_KEY ? 'EXISTS' : 'MISSING');
-
-    if (!GROQ_API_KEY || GROQ_API_KEY === "PLACEHOLDER_API_KEY") {
-        throw new Error("GROQ API key is missing. Please set VITE_GROQ_API_KEY in .env.local");
-    }
-
     if (!data.calculatedMetrics) {
         throw new Error("System State Incomplete: Metrics processing required.");
     }
@@ -112,36 +104,22 @@ Make this proposal highly credible, technically sound, and ROI-focused. Show dee
 `;
 
 
-    const requestBody = {
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-            {
-                role: 'system',
-                content: systemPrompt
-            },
-            {
-                role: 'user',
-                content: userPrompt
-            }
-        ],
-        temperature: 0.7,
-        max_tokens: 4096
-    };
-
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch('/api/proposal', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_API_KEY}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                systemPrompt,
+                userPrompt
+            })
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-            console.error('Groq API Error Details:', errorData);
-            throw new Error(`Groq API Error: ${response.status} - ${JSON.stringify(errorData)}`);
+            console.error('API Error Details:', errorData);
+            throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
 
         const result = await response.json();

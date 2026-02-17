@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { defaultKnowledgeBase } from '../services/knowledgeBase';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+
 
 interface Message {
     role: 'user' | 'assistant';
@@ -91,21 +91,17 @@ Remember: You're for QUICK questions. The proposal generator is for DETAILED inf
                 content: msg.content
             }));
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GROQ_API_KEY}`
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         ...conversationHistory,
                         { role: 'user', content: input }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 300
+                    ]
                 })
             });
 
