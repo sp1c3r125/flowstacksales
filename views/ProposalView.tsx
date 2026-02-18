@@ -4,8 +4,21 @@ import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
 import { AppState } from '../types';
 import { generateProposal } from '../services/groqService';
-import { calculateAnnualLeakage, calculateMonthlyLeakage, checkIsHighValue, formatCurrency, HIGH_VALUE_THRESHOLD } from '../utils/calculations';
-import { Terminal as TerminalIcon, RefreshCw, Download, FileText, FileBarChart, Server, Workflow, Database, ShieldCheck, Cpu, CheckCircle, Wifi, Lock } from 'lucide-react';
+import { checkIsHighValue, formatCurrency, HIGH_VALUE_THRESHOLD } from '../utils/calculations';
+import {
+  Terminal as TerminalIcon,
+  RefreshCw,
+  Download,
+  FileText,
+  FileBarChart,
+  Server,
+  Workflow,
+  Database,
+  ShieldCheck,
+  Cpu,
+  CheckCircle,
+  Wifi,
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Props {
@@ -57,40 +70,48 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
   useEffect(() => {
     let isMounted = true;
+
     const fetchProposal = async () => {
       try {
         const text = await generateProposal(appState);
-        if (isMounted) {
-          setProposal(text);
-          setLoading(false);
 
-          // Send lead to n8n automatically
-          try {
-            await fetch('/api/lead', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                step: 'proposal',
-                calculator: appState.calculator,
-                ingest: appState.ingest,
-                calculatedMetrics: appState.calculatedMetrics,
-                proposalGenerated: true,
-                timestamp: new Date().toISOString(),
-              }),
-            });
-            console.log('Lead sent to n8n successfully');
-          } catch (error) {
-            console.error('Failed to send lead to n8n:', error);
-            // Don't block user if webhook fails
-          }
+        if (!isMounted) return;
+
+        setProposal(text);
+        setLoading(false);
+
+        // Send lead to n8n automatically (AUTO trigger)
+        try {
+          await fetch('/api/lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              step: 'proposal',
+              exportTrigger: 'auto',
+              timestamp: new Date().toISOString(),
+
+              calculator: appState.calculator,
+              ingest: appState.ingest,
+              calculatedMetrics: appState.calculatedMetrics,
+
+              proposalGenerated: true,
+              proposalMarkdown: text,
+            }),
+          });
+
+          console.log('Lead sent to n8n successfully (auto)');
+        } catch (error) {
+          console.error('Failed to send lead to n8n (auto):', error);
+          // Don't block user if webhook fails
         }
+
       } catch (e: any) {
-        if (isMounted) {
-          setProposal(`SYSTEM FAULT: ${e.message || "Unknown AI Diagnostic Error"}`);
-          setLoading(false);
-        }
+        if (!isMounted) return;
+        setProposal(`SYSTEM FAULT: ${e?.message || "Unknown AI Diagnostic Error"}`);
+        setLoading(false);
       }
     };
+
     fetchProposal();
     return () => { isMounted = false; };
   }, [appState]);
@@ -104,6 +125,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         i += 10; // Faster typing for better UX
         if (i > proposal.length) clearInterval(interval);
       }, 10);
+
       return () => clearInterval(interval);
     }
   }, [loading, proposal]);
@@ -113,16 +135,14 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [deployLogs]);
 
-  const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
+  const { monthlyLeakage, annualLeakage } =
+    appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
 
-  const isHighValue = useMemo(() =>
-    checkIsHighValue(monthlyLeakage),
-    [monthlyLeakage]
-  );
+  const isHighValue = useMemo(() => checkIsHighValue(monthlyLeakage), [monthlyLeakage]);
 
   // Select Tech Stack based on logic: Low = Tier 2, High = Tier 3
-  const activeStack = useMemo(() =>
-    isHighValue ? TECH_STACKS.tier3 : TECH_STACKS.tier2,
+  const activeStack = useMemo(
+    () => (isHighValue ? TECH_STACKS.tier3 : TECH_STACKS.tier2),
     [isHighValue]
   );
 
@@ -130,13 +150,17 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     setDeployStatus('sending');
     setDeployLogs([]);
 
-    const addLog = (msg: string) => {
-      setDeployLogs(prev => [...prev, msg]);
-    };
-
+    const addLog = (msg: string) => setDeployLogs(prev => [...prev, msg]);
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
+      // Guard: don’t deploy if proposal text isn't available
+      if (!proposal || proposal.trim().length < 100) {
+        addLog("> ERROR: PROPOSAL TEXT MISSING. GENERATE REPORT FIRST.");
+        setDeployStatus('idle');
+        return;
+      }
+
       addLog("> INITIALIZING SECURE UPLINK...");
       await delay(800);
       addLog("> HANDSHAKE ESTABLISHED [TLS 1.3]");
@@ -152,16 +176,30 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       addLog("> UPLOAD PACKET: [====================] 100%");
       await delay(500);
 
-      // Actual API Call to forward lead
+      // Actual API Call to forward lead (MANUAL trigger)
       const response = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appState)
+        body: JSON.stringify({
+          step: 'deploy',
+          exportTrigger: 'manual',
+          timestamp: new Date().toISOString(),
+
+          // keep these top-level so your n8n mapping stays stable
+          calculator: appState.calculator,
+          ingest: appState.ingest,
+          calculatedMetrics: appState.calculatedMetrics,
+
+          // include the actual analysis text (local state)
+          proposalGenerated: true,
+          proposalMarkdown: proposal,
+
+          // optional: include full state for debugging
+          appState,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("UPLINK FAILURE");
-      }
+      if (!response.ok) throw new Error("UPLINK FAILURE");
 
       addLog("> 200 OK: LEAD CAPTURED.");
       addLog("> PROTOCOL DEPLOYMENT: CONFIRMED.");
@@ -207,19 +245,28 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-2xl font-bold text-white">{formatCurrency(monthlyLeakage)}</div>
             </div>
             <div className={isHighValue ? "text-red-400 font-mono text-xs" : "text-blue-400 font-mono text-xs"}>
-              {isHighValue ? `CRITICAL: EXCEEDS ${formatCurrency(HIGH_VALUE_THRESHOLD)}/MO THRESHOLD` : "STATUS: STANDARD LEAKAGE DETECTED"}
+              {isHighValue
+                ? `CRITICAL: EXCEEDS ${formatCurrency(HIGH_VALUE_THRESHOLD)}/MO THRESHOLD`
+                : "STATUS: STANDARD LEAKAGE DETECTED"}
             </div>
           </div>
         </BentoCard>
 
         {/* AI Output */}
-        <BentoCard className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col" title="Strategic Analysis" accent="default" headerAction={<TerminalIcon size={14} className="text-slate-500" />}>
+        <BentoCard
+          className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col"
+          title="Strategic Analysis"
+          accent="default"
+          headerAction={<TerminalIcon size={14} className="text-slate-500" />}
+        >
           <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-inner overflow-y-auto max-h-[60vh]">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
                 <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
                 <div className="space-y-2 text-center">
-                  <p className="text-emerald-500 font-mono text-sm animate-pulse">ANALYZING {appState.ingest.agencyName.toUpperCase()} ARCHITECTURE...</p>
+                  <p className="text-emerald-500 font-mono text-sm animate-pulse">
+                    ANALYZING {appState.ingest.agencyName.toUpperCase()} ARCHITECTURE...
+                  </p>
                   <p className="text-slate-500 text-xs">Comparing against industry benchmarks...</p>
                 </div>
               </div>
@@ -227,12 +274,32 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <article className="prose prose-invert max-w-none">
                 <ReactMarkdown
                   components={{
-                    h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider flex items-center gap-2">{children}</h2>,
-                    p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
-                    ul: ({ children }) => <ul className="space-y-4 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
-                    li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50 hover:border-blue-500/50 transition-colors">{children}</li>,
-                    strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>
+                    h1: ({ children }) => (
+                      <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider flex items-center gap-2">
+                        {children}
+                      </h2>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="space-y-4 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50 hover:border-blue-500/50 transition-colors">
+                        {children}
+                      </li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="text-white font-bold mr-2 inline-block">{children}</strong>
+                    ),
                   }}
                 >
                   {streamingText}
@@ -244,12 +311,19 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
         {/* Technical Stack Spec Sheet */}
         {!loading && (
-          <BentoCard className="col-span-12 animate-[fadeIn_0.5s_ease-out_0.5s] fill-mode-backwards" title="Proposed Architecture" accent={isHighValue ? "red" : "blue"} headerAction={<Server size={14} className="text-slate-500" />}>
+          <BentoCard
+            className="col-span-12 animate-[fadeIn_0.5s_ease-out_0.5s] fill-mode-backwards"
+            title="Proposed Architecture"
+            accent={isHighValue ? "red" : "blue"}
+            headerAction={<Server size={14} className="text-slate-500" />}
+          >
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               {/* Left: Overview */}
               <div className="md:col-span-4 space-y-4">
                 <div>
-                  <h3 className={`text-xl font-bold ${isHighValue ? 'text-red-400' : 'text-blue-400'}`}>{activeStack.name}</h3>
+                  <h3 className={`text-xl font-bold ${isHighValue ? 'text-red-400' : 'text-blue-400'}`}>
+                    {activeStack.name}
+                  </h3>
                   <p className="text-slate-500 font-mono text-xs uppercase mt-1">{activeStack.subtitle}</p>
                 </div>
                 <div className="p-4 bg-slate-950 rounded-lg border border-slate-800">
@@ -260,7 +334,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                   <h4 className="text-xs font-mono text-slate-500 uppercase font-bold">System Outputs</h4>
                   <div className="flex flex-wrap gap-2">
                     {activeStack.outputs.map((output, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 font-mono">
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 font-mono"
+                      >
                         {output}
                       </span>
                     ))}
@@ -272,15 +349,30 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="md:col-span-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activeStack.stack.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800/30 transition-colors group border border-transparent hover:border-slate-800">
-                      <div className={`mt-1 p-1.5 rounded bg-slate-900 border border-slate-800 ${isHighValue ? 'group-hover:border-red-500/30' : 'group-hover:border-blue-500/30'} transition-colors`}>
-                        {idx === 0 ? <Workflow size={14} className="text-slate-400" /> :
-                          idx === 1 ? <Database size={14} className="text-slate-400" /> :
-                            idx === 5 ? <Cpu size={14} className="text-slate-400" /> :
-                              <ShieldCheck size={14} className="text-slate-400" />}
+                    <div
+                      key={idx}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800/30 transition-colors group border border-transparent hover:border-slate-800"
+                    >
+                      <div
+                        className={`mt-1 p-1.5 rounded bg-slate-900 border border-slate-800 ${isHighValue
+                          ? 'group-hover:border-red-500/30'
+                          : 'group-hover:border-blue-500/30'
+                          } transition-colors`}
+                      >
+                        {idx === 0 ? (
+                          <Workflow size={14} className="text-slate-400" />
+                        ) : idx === 1 ? (
+                          <Database size={14} className="text-slate-400" />
+                        ) : idx === 5 ? (
+                          <Cpu size={14} className="text-slate-400" />
+                        ) : (
+                          <ShieldCheck size={14} className="text-slate-400" />
+                        )}
                       </div>
                       <div>
-                        <div className="text-xs font-mono text-slate-500 uppercase tracking-tight">{item.category}</div>
+                        <div className="text-xs font-mono text-slate-500 uppercase tracking-tight">
+                          {item.category}
+                        </div>
                         <div className="text-sm font-bold text-slate-200">{item.tool}</div>
                       </div>
                     </div>
@@ -301,10 +393,16 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 </div>
                 <div>
                   <div className="text-emerald-400 font-bold font-mono">DEPLOYMENT SUCCESSFUL</div>
-                  <div className="text-xs text-emerald-600/70">Protocol credentials sent to {appState.ingest.contactEmail}</div>
+                  <div className="text-xs text-emerald-600/70">
+                    Protocol credentials sent to {appState.ingest.contactEmail}
+                  </div>
                 </div>
               </div>
-              <Button onClick={onReset} variant="ghost" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-900/30">
+              <Button
+                onClick={onReset}
+                variant="ghost"
+                className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-900/30"
+              >
                 <RefreshCw className="mr-2 h-4 w-4" /> RESTART SYSTEM
               </Button>
             </div>
@@ -320,7 +418,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 <Button
                   onClick={handleDeploy}
                   disabled={loading || deployStatus === 'sending'}
-                  className={isHighValue ? "bg-red-600 hover:bg-red-500 border-red-500" : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"}
+                  className={isHighValue
+                    ? "bg-red-600 hover:bg-red-500 border-red-500"
+                    : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"}
                 >
                   {deployStatus === 'sending' ? (
                     <><Wifi className="mr-2 h-4 w-4 animate-pulse" /> CONNECTING...</>
