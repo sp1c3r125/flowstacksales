@@ -4,8 +4,25 @@ import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
 import { AppState } from '../types';
 import { generateProposal } from '../services/groqService';
-import { calculateAnnualLeakage, calculateMonthlyLeakage, checkIsHighValue, formatCurrency, HIGH_VALUE_THRESHOLD } from '../utils/calculations';
-import { Terminal as TerminalIcon, RefreshCw, Download, FileText, FileBarChart, Server, Workflow, Database, ShieldCheck, Cpu, CheckCircle, Wifi, Lock } from 'lucide-react';
+import {
+  checkIsHighValue,
+  formatCurrency,
+  HIGH_VALUE_THRESHOLD
+} from '../utils/calculations';
+import {
+  Terminal as TerminalIcon,
+  RefreshCw,
+  Download,
+  FileText,
+  FileBarChart,
+  Server,
+  Workflow,
+  Database,
+  ShieldCheck,
+  Cpu,
+  CheckCircle,
+  Wifi
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Props {
@@ -55,53 +72,82 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const [deployLogs, setDeployLogs] = useState<string[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
+  const { monthlyLeakage, annualLeakage } =
+    appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
+
+  const isHighValue = useMemo(() => checkIsHighValue(monthlyLeakage), [monthlyLeakage]);
+
+  const activeStack = useMemo(
+    () => (isHighValue ? TECH_STACKS.tier3 : TECH_STACKS.tier2),
+    [isHighValue]
+  );
+
+  const severity = useMemo(
+    () => (isHighValue ? 'critical' : 'standard'),
+    [isHighValue]
+  );
+
+  const recommendedTier = useMemo(
+    () => (isHighValue ? 3 : 2),
+    [isHighValue]
+  );
+
   useEffect(() => {
     let isMounted = true;
+
     const fetchProposal = async () => {
       try {
         const text = await generateProposal(appState);
-        if (isMounted) {
-          setProposal(text);
-          setLoading(false);
 
-          // Send lead to n8n automatically
-          try {
-            await fetch('/api/lead', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                step: 'proposal',
-                calculator: appState.calculator,
-                ingest: appState.ingest,
-                calculatedMetrics: appState.calculatedMetrics,
-                proposalGenerated: true,
-                timestamp: new Date().toISOString(),
-              }),
-            });
-            console.log('Lead sent to n8n successfully');
-          } catch (error) {
-            console.error('Failed to send lead to n8n:', error);
-            // Don't block user if webhook fails
-          }
+        if (!isMounted) return;
+
+        setProposal(text);
+        setLoading(false);
+
+        // Auto-export to n8n (includes proposalMarkdown)
+        try {
+          await fetch('/api/lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              step: 'proposal',
+              exportTrigger: 'auto',
+              timestamp: new Date().toISOString(),
+
+              calculator: appState.calculator,
+              ingest: appState.ingest,
+              calculatedMetrics: appState.calculatedMetrics,
+
+              proposalGenerated: true,
+              proposalMarkdown: text,
+
+              severity,
+              recommendedTier,
+              proposedArchitecture: activeStack.name,
+            }),
+          });
+        } catch (err) {
+          // Do not block UI if webhook fails
+          console.error('Auto-export to /api/lead failed:', err);
         }
       } catch (e: any) {
-        if (isMounted) {
-          setProposal(`SYSTEM FAULT: ${e.message || "Unknown AI Diagnostic Error"}`);
-          setLoading(false);
-        }
+        if (!isMounted) return;
+        setProposal(`SYSTEM FAULT: ${e?.message || "Unknown AI Diagnostic Error"}`);
+        setLoading(false);
       }
     };
+
     fetchProposal();
     return () => { isMounted = false; };
-  }, [appState]);
+  }, [appState, severity, recommendedTier, activeStack.name]);
 
-  // Typing effect simulation
+  // Typing effect
   useEffect(() => {
     if (!loading && proposal) {
       let i = 0;
       const interval = setInterval(() => {
         setStreamingText(proposal.slice(0, i));
-        i += 10; // Faster typing for better UX
+        i += 10;
         if (i > proposal.length) clearInterval(interval);
       }, 10);
       return () => clearInterval(interval);
@@ -113,59 +159,59 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [deployLogs]);
 
-  const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
-
-  const isHighValue = useMemo(() =>
-    checkIsHighValue(monthlyLeakage),
-    [monthlyLeakage]
-  );
-
-  // Select Tech Stack based on logic: Low = Tier 2, High = Tier 3
-  const activeStack = useMemo(() =>
-    isHighValue ? TECH_STACKS.tier3 : TECH_STACKS.tier2,
-    [isHighValue]
-  );
-
   const handleDeploy = async () => {
     setDeployStatus('sending');
     setDeployLogs([]);
 
-    const addLog = (msg: string) => {
-      setDeployLogs(prev => [...prev, msg]);
-    };
-
+    const addLog = (msg: string) => setDeployLogs(prev => [...prev, msg]);
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
       addLog("> INITIALIZING SECURE UPLINK...");
-      await delay(800);
-      addLog("> HANDSHAKE ESTABLISHED [TLS 1.3]");
       await delay(600);
-      addLog(`> IDENTIFYING TARGET: ${appState.ingest.agencyName.toUpperCase()}`);
-      addLog(`> VALIDATING CREDENTIALS: ${appState.ingest.contactEmail}`);
-      await delay(800);
-      addLog(`> SERIALIZING METRICS: ₱${annualLeakage.toLocaleString()} LEAKAGE`);
-      addLog(`> CONFIGURING PROTOCOL: ${activeStack.name.toUpperCase()}`);
-      await delay(1000);
-      addLog("> CONNECTING TO SOURCE_OF_TRUTH [AIRTABLE]...");
-      await delay(1200);
-      addLog("> UPLOAD PACKET: [====================] 100%");
+      addLog("> HANDSHAKE ESTABLISHED");
+      await delay(400);
+      addLog(`> TARGET: ${appState.ingest.agencyName.toUpperCase()}`);
+      addLog(`> EMAIL: ${appState.ingest.contactEmail}`);
       await delay(500);
+      addLog(`> METRICS: ${formatCurrency(annualLeakage)} ANNUAL`);
+      addLog(`> PROTOCOL: ${activeStack.name.toUpperCase()}`);
+      await delay(700);
+      addLog("> UPLOAD PACKET: [====================] 100%");
+      await delay(300);
 
-      // Actual API Call to forward lead
+      // Manual export to n8n (includes proposalMarkdown)
+      const payload = {
+        step: 'proposal',
+        exportTrigger: 'manual',
+        timestamp: new Date().toISOString(),
+
+        calculator: appState.calculator,
+        ingest: appState.ingest,
+        calculatedMetrics: appState.calculatedMetrics,
+
+        proposalGenerated: true,
+        proposalMarkdown: proposal,
+
+        severity,
+        recommendedTier,
+        proposedArchitecture: activeStack.name,
+
+        // optional: include full state for debugging
+        appState,
+      };
+
       const response = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appState)
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error("UPLINK FAILURE");
-      }
+      if (!response.ok) throw new Error("UPLINK FAILURE");
 
       addLog("> 200 OK: LEAD CAPTURED.");
       addLog("> PROTOCOL DEPLOYMENT: CONFIRMED.");
-      await delay(800);
+      await delay(400);
       setDeployStatus('success');
     } catch (error) {
       addLog("> ERROR: CONNECTION REFUSED");
@@ -176,8 +222,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
   return (
     <div className="space-y-6 animate-[fadeIn_1s_ease-out] pb-20 relative">
-
-      {/* Reusable Terminal Component */}
       <Terminal
         isOpen={deployStatus === 'sending'}
         logs={deployLogs}
@@ -195,7 +239,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       </div>
 
       <BentoGrid>
-        {/* Metric Summary */}
         <BentoCard className="col-span-12 md:col-span-4 space-y-4" title="Leakage Verified" accent={isHighValue ? 'red' : 'blue'}>
           <div className="space-y-4">
             <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-lg">
@@ -207,19 +250,27 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-2xl font-bold text-white">{formatCurrency(monthlyLeakage)}</div>
             </div>
             <div className={isHighValue ? "text-red-400 font-mono text-xs" : "text-blue-400 font-mono text-xs"}>
-              {isHighValue ? `CRITICAL: EXCEEDS ${formatCurrency(HIGH_VALUE_THRESHOLD)}/MO THRESHOLD` : "STATUS: STANDARD LEAKAGE DETECTED"}
+              {isHighValue
+                ? `CRITICAL: EXCEEDS ${formatCurrency(HIGH_VALUE_THRESHOLD)}/MO THRESHOLD`
+                : "STATUS: STANDARD LEAKAGE DETECTED"}
             </div>
           </div>
         </BentoCard>
 
-        {/* AI Output */}
-        <BentoCard className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col" title="Strategic Analysis" accent="default" headerAction={<TerminalIcon size={14} className="text-slate-500" />}>
+        <BentoCard
+          className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col"
+          title="Strategic Analysis"
+          accent="default"
+          headerAction={<TerminalIcon size={14} className="text-slate-500" />}
+        >
           <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-inner overflow-y-auto max-h-[60vh]">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
                 <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
                 <div className="space-y-2 text-center">
-                  <p className="text-emerald-500 font-mono text-sm animate-pulse">ANALYZING {appState.ingest.agencyName.toUpperCase()} ARCHITECTURE...</p>
+                  <p className="text-emerald-500 font-mono text-sm animate-pulse">
+                    ANALYZING {appState.ingest.agencyName.toUpperCase()} ARCHITECTURE...
+                  </p>
                   <p className="text-slate-500 text-xs">Comparing against industry benchmarks...</p>
                 </div>
               </div>
@@ -242,16 +293,20 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           </div>
         </BentoCard>
 
-        {/* Technical Stack Spec Sheet */}
         {!loading && (
-          <BentoCard className="col-span-12 animate-[fadeIn_0.5s_ease-out_0.5s] fill-mode-backwards" title="Proposed Architecture" accent={isHighValue ? "red" : "blue"} headerAction={<Server size={14} className="text-slate-500" />}>
+          <BentoCard
+            className="col-span-12 animate-[fadeIn_0.5s_ease-out_0.5s] fill-mode-backwards"
+            title="Proposed Architecture"
+            accent={isHighValue ? "red" : "blue"}
+            headerAction={<Server size={14} className="text-slate-500" />}
+          >
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-              {/* Left: Overview */}
               <div className="md:col-span-4 space-y-4">
                 <div>
                   <h3 className={`text-xl font-bold ${isHighValue ? 'text-red-400' : 'text-blue-400'}`}>{activeStack.name}</h3>
                   <p className="text-slate-500 font-mono text-xs uppercase mt-1">{activeStack.subtitle}</p>
                 </div>
+
                 <div className="p-4 bg-slate-950 rounded-lg border border-slate-800">
                   <p className="text-sm text-slate-300 leading-relaxed italic">"{activeStack.purpose}"</p>
                 </div>
@@ -268,12 +323,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 </div>
               </div>
 
-              {/* Right: Stack Grid */}
               <div className="md:col-span-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activeStack.stack.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800/30 transition-colors group border border-transparent hover:border-slate-800">
-                      <div className={`mt-1 p-1.5 rounded bg-slate-900 border border-slate-800 ${isHighValue ? 'group-hover:border-red-500/30' : 'group-hover:border-blue-500/30'} transition-colors`}>
+                      <div className={`mt-1 p-1.5 rounded bg-slate-900 border border-slate-800 transition-colors`}>
                         {idx === 0 ? <Workflow size={14} className="text-slate-400" /> :
                           idx === 1 ? <Database size={14} className="text-slate-400" /> :
                             idx === 5 ? <Cpu size={14} className="text-slate-400" /> :
@@ -291,7 +345,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           </BentoCard>
         )}
 
-        {/* Action Bar */}
         <div className="col-span-12 flex justify-between pt-6 border-t border-slate-800/50">
           {deployStatus === 'success' ? (
             <div className="w-full flex justify-between items-center bg-emerald-900/10 border border-emerald-500/30 rounded-lg p-4 animate-[fadeIn_0.5s_ease-out]">
