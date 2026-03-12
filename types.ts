@@ -9,10 +9,21 @@ export const CalculatorSchema = z.object({
 
 // Zod Schema for Ingest Step
 export const IngestSchema = z.object({
-  agencyName: z.string().min(2, "Agency Name is required"),
-  contactEmail: z.string().email("Invalid email address"),
-  niche: z.string().min(1, "Sector Niche is required"),
-  bottleneck: z.string().min(1, "Primary Bottleneck is required"),
+  contactName: z.string().min(2, 'Contact name is required'),
+  agencyName: z.string().min(2, 'Business name is required'),
+  contactEmail: z.string().email('Invalid email address'),
+  phone: z.string().min(7, 'Phone is required'),
+  niche: z.string().min(1, 'Business type is required'),
+  leadSource: z.string().min(1, 'Lead source is required'),
+  messagesPerDay: z.coerce.number().min(0, 'Messages per day cannot be negative'),
+  bottleneck: z.string().min(1, 'Primary bottleneck is required'),
+  currentProblem: z.string().min(10, 'Describe the current problem in one sentence'),
+  needsBooking: z.boolean(),
+  multipleOffers: z.boolean(),
+  needsStaffRouting: z.boolean(),
+  crmUsed: z.string().optional().default(''),
+  bookingLink: z.union([z.string().url('Booking link must be a valid URL'), z.literal('')]).default(''),
+  packageInterest: z.string().min(1, 'Package interest is required'),
 });
 
 export type CalculatorData = z.infer<typeof CalculatorSchema>;
@@ -31,12 +42,23 @@ export interface AppState {
 export const INITIAL_CALCULATOR_DATA: CalculatorData = {
   volume: 100,
   value: 5000,
-  rate: 40, // 40% success rate
+  rate: 40,
 };
 
 export const INITIAL_INGEST_DATA: IngestData = {
+  contactName: '',
   agencyName: '',
   contactEmail: '',
+  phone: '',
   niche: '',
+  leadSource: '',
+  messagesPerDay: 10,
   bottleneck: '',
+  currentProblem: '',
+  needsBooking: true,
+  multipleOffers: false,
+  needsStaffRouting: false,
+  crmUsed: '',
+  bookingLink: '',
+  packageInterest: 'Not Sure',
 };

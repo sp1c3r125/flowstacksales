@@ -3,8 +3,8 @@ import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button, RangeControl } from '../components/UI';
 import { CalculatorData, CalculatorSchema } from '../types';
 import { calculateMonthlyLeakage, calculateAnnualLeakage, formatCurrency } from '../utils/calculations';
-import { ArrowRight, Activity, TrendingDown, Layers, CheckCircle2 } from 'lucide-react';
-import { packageOrder, serviceCatalog, packageComparisonRows, recommendPackage } from '../services/catalog';
+import { ArrowRight, Activity, TrendingDown, Layers, CheckCircle2, CalendarCheck2, ShieldCheck } from 'lucide-react';
+import { packageOrder, serviceCatalog, packageComparisonRows, recommendPackage, proofExamples, rolloutSteps, onboardingChecklist } from '../services/catalog';
 
 interface Props {
   data: CalculatorData;
@@ -131,6 +131,44 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </BentoCard>
+
+        <BentoCard title="Proof by use case" className="col-span-12 md:col-span-7" accent="blue">
+          <div className="grid md:grid-cols-3 gap-4">
+            {proofExamples.map((item) => (
+              <div key={item.niche} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-2">
+                <div className="text-xs font-mono uppercase text-blue-300">{item.niche}</div>
+                <div className="text-white font-semibold">{item.result}</div>
+                <div className="text-sm text-slate-400">{item.details}</div>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
+
+        <BentoCard title="What happens after you book" className="col-span-12 md:col-span-5">
+          <div className="space-y-4">
+            {rolloutSteps.map((step, index) => (
+              <div key={step} className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-mono flex items-center justify-center shrink-0">{index + 1}</div>
+                <div className="text-sm text-slate-300">{step}</div>
+              </div>
+            ))}
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 flex gap-3 items-start">
+              <CalendarCheck2 className="text-emerald-400 shrink-0 mt-0.5" size={18} />
+              <div className="text-sm text-slate-300">The goal is not just to explain packages. It is to move you into a clean setup and launch path.</div>
+            </div>
+          </div>
+        </BentoCard>
+
+        <BentoCard title="What to prepare before setup" className="col-span-12" accent="green">
+          <div className="grid md:grid-cols-5 gap-3">
+            {onboardingChecklist.map((item) => (
+              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300 flex gap-2 items-start">
+                <ShieldCheck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         </BentoCard>
 

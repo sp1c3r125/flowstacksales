@@ -6,7 +6,8 @@ import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
 import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { recommendPackage, serviceCatalog, packageOrder, packageComparisonRows } from '../services/catalog';
+import { packageComparisonRows, packageOrder, serviceCatalog } from '../services/catalog';
+import { buildLeadCapturePayload } from '../services/intake';
 
 interface Props {
   appState: AppState;
@@ -22,8 +23,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
-  const recommendedKey = useMemo(() => recommendPackage(monthlyLeakage), [monthlyLeakage]);
-  const recommended = useMemo(() => serviceCatalog[recommendedKey], [recommendedKey]);
+  const leadCapture = useMemo(() => buildLeadCapturePayload(appState), [appState]);
+  const recommended = useMemo(() => serviceCatalog[leadCapture.packageKey], [leadCapture.packageKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -42,7 +43,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               requestId: `fs_web_${Date.now()}`,
               ingest: appState.ingest,
               calculatedMetrics: appState.calculatedMetrics,
-              recommendedPackage: recommended.name,
+              recommendedPackage: leadCapture.recommendedPackage,
             },
           }),
         });
@@ -69,7 +70,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               calculatedMetrics: appState.calculatedMetrics,
               proposalGenerated: true,
               proposalMarkdown: text,
-              recommendedPackage: recommended.name,
+              recommendedPackage: leadCapture.recommendedPackage,
+              qualificationReason: leadCapture.qualificationReason,
+              leadPayload: leadCapture.leadPayload,
+              airtableFields: leadCapture.airtableFields,
             }),
           });
         } catch (err) {
@@ -84,7 +88,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     fetchProposal();
     return () => { isMounted = false; };
-  }, [appState, recommended.name]);
+  }, [appState, leadCapture]);
 
   useEffect(() => {
     if (!loading && proposal) {
@@ -114,6 +118,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       addLog(`> PACKAGE: ${recommended.name.toUpperCase()}`);
       await delay(300);
       addLog(`> CONTACT: ${appState.ingest?.contactEmail || 'N/A'}`);
+      await delay(200);
+      addLog(`> AIRTABLE SALES STAGE: ${leadCapture.leadPayload.salesStage}`);
       await delay(300);
       addLog(`> ANNUAL LEAKAGE: ${formatCurrency(annualLeakage)}`);
       await delay(300);
@@ -129,7 +135,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         calculatedMetrics: appState.calculatedMetrics,
         proposalGenerated: true,
         proposalMarkdown: proposal,
-        recommendedPackage: recommended.name,
+        recommendedPackage: leadCapture.recommendedPackage,
       };
 
       const response = await fetch('/api/lead', {
@@ -179,11 +185,16 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase">Pricing</div>
               <div className="text-white font-semibold">{recommended.setup}</div>
               <div className="text-slate-300">{recommended.monthly}</div>
+              <div className="text-xs text-slate-500 mt-2">Sales stage on submission: {leadCapture.leadPayload.salesStage}</div>
               {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
             </div>
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-2">Best for</div>
               <div className="space-y-2">{recommended.bestFor.map(item => <div key={item} className="text-sm text-slate-300">• {item}</div>)}</div>
+              <div className="pt-3 border-t border-slate-800">
+                <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
+                <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
+              </div>
             </div>
           </div>
         </BentoCard>
