@@ -4,7 +4,7 @@ import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
 import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
-import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
+import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight, ClipboardCheck, CalendarCheck2, ShieldAlert } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { recommendPackage, serviceCatalog, packageOrder, packageComparisonRows } from '../services/catalog';
 
@@ -213,7 +213,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           </div>
         </BentoCard>
 
-        <BentoCard className="col-span-12" title="What is included vs not included">
+        <BentoCard className="col-span-12 md:col-span-6" title="What is included vs not included">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
@@ -222,6 +222,44 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
               <div className="space-y-2">{[...recommended.limits, ...recommended.excludes].map(item => <div key={item} className="text-sm text-slate-300">• {item}</div>)}</div>
+            </div>
+          </div>
+        </BentoCard>
+
+        <BentoCard className="col-span-12 md:col-span-6" title="What to prepare for onboarding" accent="blue">
+          <div className="space-y-3">
+            {recommended.onboarding.map((item) => (
+              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300 flex gap-3 items-start">
+                <ClipboardCheck size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
+
+        <BentoCard className="col-span-12 md:col-span-7" title="What happens after you book" accent="green">
+          <div className="grid md:grid-cols-3 gap-4">
+            {recommended.nextSteps.map((step, index) => (
+              <div key={step} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="text-xs font-mono uppercase text-emerald-300 mb-2">Step {index + 1}</div>
+                <div className="text-white font-semibold">{step}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4 flex gap-3 items-start">
+            <CalendarCheck2 className="text-emerald-400 shrink-0 mt-0.5" size={18} />
+            <div className="text-sm text-slate-300">This keeps the sales process bounded: qualify, scope, onboard, deploy, test, then launch.</div>
+          </div>
+        </BentoCard>
+
+        <BentoCard className="col-span-12 md:col-span-5" title="Why this recommendation is safe">
+          <div className="space-y-3 text-sm text-slate-300">
+            {recommended.proof.map((item) => (
+              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">• {item}</div>
+            ))}
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 items-start">
+              <ShieldAlert size={18} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>This recommendation stays inside approved package scope. It is not a promise of unlimited custom workflow development.</div>
             </div>
           </div>
         </BentoCard>

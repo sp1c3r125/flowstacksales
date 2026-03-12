@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Input, Button, Select } from '../components/UI';
 import { IngestData, IngestSchema } from '../types';
-import { ArrowRight, ArrowLeft, ShieldCheck, User, Mail, Target, AlertTriangle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, ShieldCheck, User, Mail, Target, AlertTriangle, ClipboardList, CircleOff, CalendarRange } from 'lucide-react';
+import { faqItems, onboardingChecklist, rolloutSteps } from '../services/catalog';
 
 interface Props {
   data: IngestData;
@@ -55,8 +56,8 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
         </p>
       </div>
 
-      <BentoGrid className="max-w-5xl">
-        <BentoCard title="Qualification inputs" className="col-span-12 md:col-span-8" accent="green">
+      <BentoGrid className="max-w-6xl">
+        <BentoCard title="Qualification inputs" className="col-span-12 md:col-span-7" accent="green">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="Business name" value={data.agencyName} onChange={e => handleChange('agencyName', e.target.value)} error={errors.agencyName} placeholder="e.g. Apex Dental" prefix={<User size={14} />} />
             <Select label="Business type" value={data.niche} onChange={e => handleChange('niche', e.target.value)} error={errors.niche} options={NICHE_OPTIONS} prefix={<Target size={14} />} />
@@ -69,11 +70,14 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
           </div>
         </BentoCard>
 
-        <BentoCard title="What happens next" className="col-span-12 md:col-span-4">
+        <BentoCard title="What happens next" className="col-span-12 md:col-span-5">
           <div className="space-y-4 text-sm text-slate-300">
-            <div><span className="text-white font-semibold">1.</span> We recommend Lite, Starter, Growth, or Scale.</div>
-            <div><span className="text-white font-semibold">2.</span> The proposal shows fit, pricing, scope limits, and next step.</div>
-            <div><span className="text-white font-semibold">3.</span> You use that package to decide whether to book a setup call.</div>
+            {rolloutSteps.map((step, index) => (
+              <div key={step} className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-mono flex items-center justify-center shrink-0">{index + 1}</div>
+                <div>{step}</div>
+              </div>
+            ))}
           </div>
           <div className="mt-6 p-4 bg-emerald-900/20 border border-emerald-500/20 rounded-lg flex items-start gap-3">
             <ShieldCheck className="text-emerald-500 shrink-0 mt-0.5" size={20} />
@@ -81,6 +85,43 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               <h4 className="text-emerald-400 font-mono text-sm font-bold mb-1">BOUNDED PACKAGE LOGIC</h4>
               <p className="text-emerald-500/70 text-xs">The system recommends approved packages only. It does not promise unlimited custom builds inside the standard offer.</p>
             </div>
+          </div>
+        </BentoCard>
+
+        <BentoCard title="What to prepare before setup" className="col-span-12 md:col-span-7" accent="blue">
+          <div className="grid md:grid-cols-2 gap-3">
+            {onboardingChecklist.map((item) => (
+              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300 flex gap-3 items-start">
+                <ClipboardList size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
+
+        <BentoCard title="Not for everyone" className="col-span-12 md:col-span-5">
+          <div className="space-y-3 text-sm text-slate-300">
+            {[
+              'Businesses with almost no inquiries and no clear follow-up need.',
+              'Teams expecting unlimited custom automation inside starter pricing.',
+              'Enterprise-grade workflow builds that need separate custom scoping.'
+            ].map((item) => (
+              <div key={item} className="flex gap-3 items-start rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                <CircleOff size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
+
+        <BentoCard title="Fast answers" className="col-span-12">
+          <div className="grid md:grid-cols-2 gap-4">
+            {faqItems.map((item) => (
+              <div key={item.question} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4 space-y-2">
+                <div className="text-white font-semibold flex items-center gap-2"><CalendarRange size={16} className="text-slate-500" />{item.question}</div>
+                <div className="text-sm text-slate-400">{item.answer}</div>
+              </div>
+            ))}
           </div>
         </BentoCard>
 
