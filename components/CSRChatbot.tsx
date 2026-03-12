@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { defaultKnowledgeBase } from '../services/knowledgeBase';
-import { getAllPackages, formatPackageSummary } from '../services/catalog';
+import { packageOrder, serviceCatalog } from '../services/catalog';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,132 +13,95 @@ export const CSRChatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hi! I'm here for quick questions about Flowstack OS packages and setup. For a detailed recommendation, use the form above. What would you like to know?",
-      timestamp: new Date(),
-    },
+      content: 'Ask me a quick question about packages, pricing, or fit. For the exact recommendation, use the form above.',
+      timestamp: new Date()
+    }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage: Message = { role: 'user', content: input, timestamp: new Date() };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
       const kb = defaultKnowledgeBase;
-      const packageSummaries = getAllPackages().map(formatPackageSummary).join('\n\n');
+      const packageLines = packageOrder.map((key) => {
+        const pkg = serviceCatalog[key];
+        return `- ${pkg.name}: ${pkg.setup}; ${pkg.monthly}${pkg.altPricing ? `; ${pkg.altPricing}` : ''}`;
+      }).join('\n');
 
-      const systemPrompt = `You are the Flowstack OS Virtual Assistant for quick questions.
+      const systemPrompt = `You are the Flowstack quick-response assistant.
 
-CRITICAL RULES:
-- Keep responses to 2-3 short sentences.
-- Give brief overview info only.
-- Direct users to the proposal generator for tailored details.
-- Never invent pricing, package names, or scope outside the official catalog.
-- Recommend Lite, Starter, Growth, or Scale only.
-- Frame custom work as scoped add-ons, not included by default.
+Rules:
+- Keep responses under 3 short paragraphs.
+- Be direct.
+- Answer with official package names only: Flowstack Lite Kit, Starter, Growth, Scale.
+- Mention package limits when relevant.
+- Do not promise custom builds or unlimited scope.
+- For anything detailed, tell the user to use the recommendation form above.
 
-COMPANY: ${kb.companyInfo.name}
-WHAT WE DO: ${kb.companyInfo.coreOffering}
+Company: ${kb.companyInfo.name}
+Core offering: ${kb.companyInfo.coreOffering}
 
-OFFICIAL PACKAGES:
-${packageSummaries}
+Packages:
+${packageLines}
 
-PAYMENT RULE:
-Setup covers deployment and onboarding. Monthly covers support, monitoring, and approved-scope maintenance.
+Allowed guidance:
+- Lite = simple auto-replies and lead capture
+- Starter = 1 lead source, 1 booking outcome, 1 pipeline
+- Growth = daily inquiries, follow-up discipline, up to 2 pipelines
+- Scale = multi-channel routing, escalation, operator control`;
 
-TECHNICAL STACK:
-${kb.companyInfo.technicalStack.join(', ')}
-
-WHEN ASKED FOR DETAILS:
-Say: "For a full breakdown, generate a proposal using the form above."`;
-
-      const conversationHistory = messages.slice(-6).map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
+      const conversationHistory = messages.slice(-6).map(msg => ({ role: msg.role, content: msg.content }));
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...conversationHistory,
-            { role: 'user', content: input },
-          ],
-        }),
+        body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ...conversationHistory, { role: 'user', content: input }] })
       });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
       const data = await response.json();
-      const assistantMessage: Message = {
+      setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Could you rephrase your question?",
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+        content: data.choices?.[0]?.message?.content || 'I could not process that. Use the form above and I’ll map you to the right package.',
+        timestamp: new Date()
+      }]);
     } catch (error) {
       console.error('Chatbot error:', error);
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'I’m having trouble connecting. Use the proposal form above for the detailed breakdown.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+        content: 'I had a connection issue. For the exact package recommendation, use the form above.',
+        timestamp: new Date()
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   const suggestedQuestions = [
-    "What's the pricing?",
-    'Which package fits me?',
-    'What tools do you use?',
-    'How does support work?',
+    'What package fits me?',
+    'What is the pricing?',
+    'What is included in Growth?',
+    'When should I choose Scale?'
   ];
 
   return (
     <>
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-50"
-          aria-label="Open chat"
-        >
+        <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-50" aria-label="Open chat">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
-          <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">?</span>
         </button>
       )}
 
@@ -146,8 +109,8 @@ Say: "For a full breakdown, generate a proposal using the form above."`;
         <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-200">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg flex justify-between items-center">
             <div>
-              <h3 className="font-bold text-lg">Quick Help</h3>
-              <p className="text-xs text-blue-100">For full details, generate a proposal ↑</p>
+              <h3 className="font-bold text-lg">Flowstack Quick Help</h3>
+              <p className="text-xs text-blue-100">Packages, pricing, and fit. Use the form above for the full recommendation.</p>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white hover:text-gray-200 transition-colors" aria-label="Close chat">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,18 +131,7 @@ Say: "For a full breakdown, generate a proposal using the form above."`;
               </div>
             ))}
 
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {isLoading && <div className="flex justify-start"><div className="bg-white border border-gray-200 rounded-lg p-3"><div className="flex space-x-2"><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div></div></div></div>}
             <div ref={messagesEndRef} />
           </div>
 
@@ -188,13 +140,7 @@ Say: "For a full breakdown, generate a proposal using the form above."`;
               <p className="text-xs text-gray-500 mb-2">Quick questions:</p>
               <div className="space-y-1">
                 {suggestedQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setInput(question)}
-                    className="text-xs text-left text-blue-600 hover:text-blue-700 hover:underline block w-full"
-                  >
-                    • {question}
-                  </button>
+                  <button key={index} onClick={() => setInput(question)} className="text-xs text-left text-blue-600 hover:text-blue-700 hover:underline block w-full">• {question}</button>
                 ))}
               </div>
             </div>
@@ -206,16 +152,12 @@ Say: "For a full breakdown, generate a proposal using the form above."`;
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Quick question..."
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                placeholder="Ask about package fit or pricing..."
                 className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isLoading}
               />
-              <button
-                onClick={sendMessage}
-                disabled={isLoading || !input.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg px-4 py-2 transition-colors"
-              >
+              <button onClick={sendMessage} disabled={isLoading || !input.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg px-4 py-2 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
