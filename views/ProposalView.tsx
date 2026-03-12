@@ -32,8 +32,8 @@ interface Props {
 // Technical Stack Definitions
 const TECH_STACKS = {
   tier2: {
-    name: "Tier 2 — BookedOS Install",
-    subtitle: "Intake + Booking Automation",
+    name: "Starter / Growth Deployment Path",
+    subtitle: "BookedOS deployment path",
     purpose: "Inquiries become booked calls with minimal manual follow-up.",
     stack: [
       { category: "Automation Orchestrator", tool: "n8n" },
@@ -46,8 +46,8 @@ const TECH_STACKS = {
     outputs: ["Smart Routing (VIP/Standard)", "Auto-Booking Sequences", "Clean Lead Records"]
   },
   tier3: {
-    name: "Tier 3 — Full FlowStackOS",
-    subtitle: "End-to-End: Lead → Retention",
+    name: "Growth / Scale Control Layer",
+    subtitle: "Expanded routing + operator control",
     purpose: "The full lifecycle runs as a system.",
     stack: [
       { category: "Core System", tool: "Includes Full Tier 2 Architecture" },
@@ -87,7 +87,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   );
 
   const recommendedTier = useMemo(
-    () => (isHighValue ? 3 : 2),
+    () => (isHighValue ? 'growth_or_scale' : 'starter'),
     [isHighValue]
   );
 
