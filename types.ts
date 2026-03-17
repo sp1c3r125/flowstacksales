@@ -14,15 +14,26 @@ export const IngestSchema = z.object({
   contactEmail: z.string().email('Invalid email address'),
   phone: z.string().min(7, 'Phone is required'),
   niche: z.string().min(1, 'Business type is required'),
+<<<<<<< HEAD
   leadSources: z.array(z.string()).min(1, 'Select at least one lead source'),
   messagesPerDay: z.coerce.number().min(0, 'Messages per day cannot be negative'),
   primaryProblem: z.string().min(1, 'Primary problem is required'),
   problemDetail: z.string().optional().default(''),
+=======
+  leadSource: z.string().min(1, 'Lead source is required'),
+  messagesPerDay: z.coerce.number().min(0, 'Messages per day cannot be negative'),
+  bottleneck: z.string().min(1, 'Primary bottleneck is required'),
+  currentProblem: z.string().min(10, 'Describe the current problem in one sentence'),
+>>>>>>> origin/main
   needsBooking: z.boolean(),
   multipleOffers: z.boolean(),
   needsStaffRouting: z.boolean(),
   crmUsed: z.string().optional().default(''),
   bookingLink: z.union([z.string().url('Booking link must be a valid URL'), z.literal('')]).default(''),
+<<<<<<< HEAD
+=======
+  packageInterest: z.string().min(1, 'Package interest is required'),
+>>>>>>> origin/main
 });
 
 export type CalculatorData = z.infer<typeof CalculatorSchema>;
@@ -50,13 +61,25 @@ export const INITIAL_INGEST_DATA: IngestData = {
   contactEmail: '',
   phone: '',
   niche: '',
+<<<<<<< HEAD
   leadSources: [],
   messagesPerDay: 10,
   primaryProblem: '',
   problemDetail: '',
+=======
+  leadSource: '',
+  messagesPerDay: 10,
+  bottleneck: '',
+  currentProblem: '',
+>>>>>>> origin/main
   needsBooking: true,
   multipleOffers: false,
   needsStaffRouting: false,
   crmUsed: '',
   bookingLink: '',
+<<<<<<< HEAD
 };
+=======
+  packageInterest: 'Not Sure',
+};
+>>>>>>> origin/main
