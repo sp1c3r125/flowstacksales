@@ -49,7 +49,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         });
 
         const data = await proposalResp.json();
-        if (!proposalResp.ok || !data?.success) throw new Error(data?.message || 'Unable to generate proposal content.');
+        if (!proposalResp.ok || !data?.success) {
+          throw new Error(data?.message || 'Unable to generate proposal content.');
+        }
 
         const text = data?.payload?.proposalMarkdown ?? data?.proposalMarkdown ?? '';
         if (!isMounted) return;
@@ -74,6 +76,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               qualificationReason: leadCapture.qualificationReason,
               leadPayload: leadCapture.leadPayload,
               airtableFields: leadCapture.airtableFields,
+              activityPayload: leadCapture.activityPayload,
+              metadata: leadCapture.metadata,
             }),
           });
         } catch (err) {
@@ -87,7 +91,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     };
 
     fetchProposal();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [appState, leadCapture]);
 
   useEffect(() => {
@@ -106,6 +112,53 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [deployLogs]);
 
+  const handleExportBrief = () => {
+    const exportContent = [
+      `# Flowstack Proposal`,
+      ``,
+      `Generated: ${new Date().toISOString()}`,
+      ``,
+      `## Contact`,
+      `Name: ${appState.ingest.contactName}`,
+      `Business: ${appState.ingest.agencyName}`,
+      `Email: ${appState.ingest.contactEmail}`,
+      `Phone: ${appState.ingest.phone}`,
+      ``,
+      `## Business Context`,
+      `Niche: ${appState.ingest.niche}`,
+      `Lead Sources: ${appState.ingest.leadSources.join(', ')}`,
+      `Primary Problem: ${appState.ingest.primaryProblem}`,
+      `Problem Detail: ${appState.ingest.problemDetail || ''}`,
+      `CRM Used: ${appState.ingest.crmUsed || ''}`,
+      `Booking Link: ${appState.ingest.bookingLink || ''}`,
+      `Needs Booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
+      `Multiple Offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
+      `Needs Staff Routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
+      ``,
+      `## Metrics`,
+      `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
+      `Annual Leakage: ${formatCurrency(annualLeakage)}`,
+      ``,
+      `## Recommendation`,
+      `Package: ${leadCapture.recommendedPackage}`,
+      `Reason: ${leadCapture.qualificationReason}`,
+      ``,
+      `## Proposal`,
+      proposal,
+      ``,
+    ].join('\n');
+
+    const blob = new Blob([exportContent], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flowstack-proposal-${Date.now()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleDeploy = async () => {
     setDeployStatus('sending');
     setDeployLogs([]);
@@ -119,7 +172,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       await delay(300);
       addLog(`> CONTACT: ${appState.ingest?.contactEmail || 'N/A'}`);
       await delay(200);
-      addLog(`> AIRTABLE SALES STAGE: ${leadCapture.leadPayload.salesStage}`);
+      addLog(`> INGEST EVENT: ${leadCapture.metadata.event_name}`);
       await delay(300);
       addLog(`> ANNUAL LEAKAGE: ${formatCurrency(annualLeakage)}`);
       await delay(300);
@@ -136,6 +189,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         proposalGenerated: true,
         proposalMarkdown: proposal,
         recommendedPackage: leadCapture.recommendedPackage,
+        leadPayload: leadCapture.leadPayload,
+        airtableFields: leadCapture.airtableFields,
+        activityPayload: leadCapture.activityPayload,
+        metadata: leadCapture.metadata,
       };
 
       const response = await fetch('/api/lead', {
@@ -185,12 +242,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase">Pricing</div>
               <div className="text-white font-semibold">{recommended.setup}</div>
               <div className="text-slate-300">{recommended.monthly}</div>
-              <div className="text-xs text-slate-500 mt-2">Sales stage on submission: {leadCapture.leadPayload.salesStage}</div>
               {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
             </div>
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-2">Best for</div>
-              <div className="space-y-2">{recommended.bestFor.map(item => <div key={item} className="text-sm text-slate-300">• {item}</div>)}</div>
+              <div className="space-y-2">
+                {recommended.bestFor.map(item => (
+                  <div key={item} className="text-sm text-slate-300">• {item}</div>
+                ))}
+              </div>
               <div className="pt-3 border-t border-slate-800">
                 <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
                 <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
@@ -199,7 +259,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           </div>
         </BentoCard>
 
-        <BentoCard className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col" title="Proposal" headerAction={<ArrowRight size={14} className="text-slate-500" />}>
+        <BentoCard
+          className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col"
+          title="Proposal"
+          headerAction={<ArrowRight size={14} className="text-slate-500" />}
+        >
           <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-inner overflow-y-auto max-h-[60vh]">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
@@ -211,14 +275,18 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               </div>
             ) : (
               <article className="prose prose-invert max-w-none">
-                <ReactMarkdown components={{
-                  h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider">{children}</h2>,
-                  p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
-                  ul: ({ children }) => <ul className="space-y-3 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
-                  li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50">{children}</li>,
-                  strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>,
-                }}>{streamingText}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider">{children}</h2>,
+                    p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
+                    ul: ({ children }) => <ul className="space-y-3 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
+                    li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50">{children}</li>,
+                    strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>,
+                  }}
+                >
+                  {streamingText}
+                </ReactMarkdown>
               </article>
             )}
           </div>
@@ -228,11 +296,19 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
-              <div className="space-y-2">{recommended.includes.map(item => <div key={item} className="text-sm text-slate-300">• {item}</div>)}</div>
+              <div className="space-y-2">
+                {recommended.includes.map(item => (
+                  <div key={item} className="text-sm text-slate-300">• {item}</div>
+                ))}
+              </div>
             </div>
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
-              <div className="space-y-2">{[...recommended.limits, ...recommended.excludes].map(item => <div key={item} className="text-sm text-slate-300">• {item}</div>)}</div>
+              <div className="space-y-2">
+                {[...recommended.limits, ...recommended.excludes].map(item => (
+                  <div key={item} className="text-sm text-slate-300">• {item}</div>
+                ))}
+              </div>
             </div>
           </div>
         </BentoCard>
@@ -243,14 +319,18 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <thead>
                 <tr className="text-left border-b border-slate-800">
                   <th className="py-3 text-slate-500 font-mono uppercase text-xs">Category</th>
-                  {packageOrder.map((key) => <th key={key} className="py-3 px-2 text-white">{serviceCatalog[key].name}</th>)}
+                  {packageOrder.map((key) => (
+                    <th key={key} className="py-3 px-2 text-white">{serviceCatalog[key].name}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {packageComparisonRows.map((row) => (
                   <tr key={row.label} className="border-b border-slate-900">
                     <td className="py-3 text-slate-400">{row.label}</td>
-                    {packageOrder.map((key) => <td key={key} className="py-3 px-2 text-slate-300">{row.values[key]}</td>)}
+                    {packageOrder.map((key) => (
+                      <td key={key} className="py-3 px-2 text-slate-300">{row.values[key]}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -262,21 +342,37 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           {deployStatus === 'success' ? (
             <div className="w-full flex justify-between items-center bg-emerald-900/10 border border-emerald-500/30 rounded-lg p-4 animate-[fadeIn_0.5s_ease-out]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 rounded-full"><CheckCircle className="text-emerald-500" size={24} /></div>
+                <div className="p-2 bg-emerald-500/20 rounded-full">
+                  <CheckCircle className="text-emerald-500" size={24} />
+                </div>
                 <div>
                   <div className="text-emerald-400 font-bold font-mono">HANDOFF READY</div>
-                  <div className="text-xs text-emerald-600/70">Recommendation sent to {appState.ingest?.contactEmail || 'N/A'}</div>
+                  <div className="text-xs text-emerald-600/70">
+                    Recommendation sent to {appState.ingest?.contactEmail || 'N/A'}
+                  </div>
                 </div>
               </div>
-              <Button onClick={onReset} variant="ghost" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-900/30"><RefreshCw className="mr-2 h-4 w-4" /> Restart</Button>
+              <Button onClick={onReset} variant="ghost" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-900/30">
+                <RefreshCw className="mr-2 h-4 w-4" /> Restart
+              </Button>
             </div>
           ) : (
             <>
-              <Button onClick={onReset} variant="ghost" disabled={deployStatus === 'sending'}><RefreshCw className="mr-2 h-4 w-4" /> Reset</Button>
+              <Button onClick={onReset} variant="ghost" disabled={deployStatus === 'sending'}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Reset
+              </Button>
               <div className="flex gap-4">
-                <Button disabled={loading || deployStatus === 'sending'} variant="secondary"><Download className="mr-2 h-4 w-4" /> Export brief</Button>
-                <Button onClick={handleDeploy} disabled={loading || deployStatus === 'sending'} className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500">
-                  {deployStatus === 'sending' ? <><Wifi className="mr-2 h-4 w-4 animate-pulse" /> Sending...</> : <><FileText className="mr-2 h-4 w-4" /> Send sales handoff</>}
+                <Button onClick={handleExportBrief} disabled={loading || deployStatus === 'sending'} variant="secondary">
+                  <Download className="mr-2 h-4 w-4" /> Export brief
+                </Button>
+                <Button
+                  onClick={handleDeploy}
+                  disabled={loading || deployStatus === 'sending'}
+                  className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500"
+                >
+                  {deployStatus === 'sending'
+                    ? <><Wifi className="mr-2 h-4 w-4 animate-pulse" /> Sending...</>
+                    : <><FileText className="mr-2 h-4 w-4" /> Send sales handoff</>}
                 </Button>
               </div>
             </>
