@@ -25,7 +25,11 @@ export const recommendPackageFromInputs = (monthlyLeakage: number, ingest: Inges
   return recommended;
 };
 
-export const buildQualificationReason = (packageKey: PackageKey, monthlyLeakage: number, ingest: IngestData): string => {
+export const buildQualificationReason = (
+  packageKey: PackageKey,
+  monthlyLeakage: number,
+  ingest: IngestData
+): string => {
   const reasons: string[] = [];
   const volume = Number(ingest.messagesPerDay || 0);
   const sourceCount = ingest.leadSources.length;
@@ -36,7 +40,9 @@ export const buildQualificationReason = (packageKey: PackageKey, monthlyLeakage:
   if (ingest.multipleOffers) reasons.push('multiple offers');
   if (ingest.needsStaffRouting) reasons.push('staff routing');
   if (ingest.primaryProblem) reasons.push(`main problem: ${ingest.primaryProblem.toLowerCase()}`);
-  if (monthlyLeakage > 0) reasons.push(`estimated leakage ${monthlyLeakage.toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`);
+  if (monthlyLeakage > 0) {
+    reasons.push(`estimated leakage ${monthlyLeakage.toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`);
+  }
 
   return `${serviceCatalog[packageKey].name} recommended because of ${reasons.join(', ')}.`;
 };
@@ -49,9 +55,9 @@ export const buildLeadCapturePayload = (appState: AppState) => {
   const qualificationStatus = 'Qualified';
   const leadId = `fs_lead_${Date.now()}`;
   const createdAt = new Date().toISOString();
+  const tenantId = 'demo-client';
   const sourceLabel = appState.ingest.leadSources.join(', ');
   const problemDetail = appState.ingest.problemDetail?.trim() ?? '';
-  const tenantId = 'demo-client';
 
   const leadPayload = {
     lead_id: leadId,
