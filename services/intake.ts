@@ -47,17 +47,22 @@ export const buildLeadCapturePayload = (appState: AppState) => {
   const recommendedPackage = serviceCatalog[packageKey].name;
   const qualificationReason = buildQualificationReason(packageKey, monthlyLeakage, appState.ingest);
   const qualificationStatus = 'Qualified';
+  const leadId = `fs_lead_${Date.now()}`;
+  const createdAt = new Date().toISOString();
   const sourceLabel = appState.ingest.leadSources.join(', ');
   const problemDetail = appState.ingest.problemDetail?.trim() ?? '';
+  const tenantId = 'demo-client';
 
-  const payload = {
-    lead_id: `fs_lead_${Date.now()}`,
-    created_at: new Date().toISOString(),
+  const leadPayload = {
+    lead_id: leadId,
+    created_at: createdAt,
     name: appState.ingest.contactName,
     email: appState.ingest.contactEmail,
     phone: appState.ingest.phone,
     company: appState.ingest.agencyName,
     source: sourceLabel || 'Website',
+    lead_sources: appState.ingest.leadSources,
+    niche: appState.ingest.niche,
     service_need: appState.ingest.primaryProblem,
     package_interest: '',
     recommended_package: recommendedPackage,
@@ -75,40 +80,62 @@ export const buildLeadCapturePayload = (appState: AppState) => {
     notes: problemDetail
       ? `Primary problem: ${appState.ingest.primaryProblem}. ${problemDetail}`.trim()
       : `Primary problem: ${appState.ingest.primaryProblem}.`,
-    lead_sources: appState.ingest.leadSources,
-    niche: appState.ingest.niche,
+  };
+
+  const airtableFields = {
+    lead_id: leadPayload.lead_id,
+    created_at: leadPayload.created_at,
+    name: leadPayload.name,
+    email: leadPayload.email,
+    phone: leadPayload.phone,
+    company: leadPayload.company,
+    source: leadPayload.source,
+    service_need: leadPayload.service_need,
+    package_interest: leadPayload.package_interest,
+    recommended_package: leadPayload.recommended_package,
+    qualification_status: leadPayload.qualification_status,
+    qualification_reason: leadPayload.qualification_reason,
+    crm_used: leadPayload.crm_used,
+    booking_link: leadPayload.booking_link,
+    current_problem: leadPayload.current_problem,
+    messages_per_day: leadPayload.messages_per_day,
+    needs_booking: leadPayload.needs_booking,
+    multiple_offers: leadPayload.multiple_offers,
+    needs_staff_routing: leadPayload.needs_staff_routing,
+    owner: leadPayload.owner,
+    next_action: leadPayload.next_action,
+    notes: leadPayload.notes,
+    niche: leadPayload.niche,
+    lead_sources: leadPayload.lead_sources.join(', '),
+  };
+
+  const activityPayload = {
+    activity_id: `act_${Date.now()}`,
+    lead_id: leadId,
+    tenant_id: tenantId,
+    event_name: 'website_intake_submitted',
+    event_timestamp: createdAt,
+    actor: 'website',
+    status: 'success',
+    details: `Website intake submitted. Recommended package: ${recommendedPackage}. Qualification: ${qualificationReason}`,
+  };
+
+  const metadata = {
+    source_app: 'flowstacksales',
+    source_step: 'proposal',
+    tenant_id: tenantId,
+    event_name: 'website_intake_submitted',
+    submitted_at: createdAt,
+    package_key: packageKey,
   };
 
   return {
     recommendedPackage,
     qualificationReason,
     packageKey,
-    leadPayload: payload,
-    airtableFields: {
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone,
-      company: payload.company,
-      source: payload.source,
-      service_need: payload.service_need,
-      package_interest: payload.package_interest,
-      recommended_package: payload.recommended_package,
-      qualification_status: payload.qualification_status,
-      qualification_reason: payload.qualification_reason,
-      crm_used: payload.crm_used,
-      booking_link: payload.booking_link,
-      current_problem: payload.current_problem,
-      messages_per_day: payload.messages_per_day,
-      needs_booking: payload.needs_booking,
-      multiple_offers: payload.multiple_offers,
-      needs_staff_routing: payload.needs_staff_routing,
-      owner: payload.owner,
-      next_action: payload.next_action,
-      notes: payload.notes,
-      lead_id: payload.lead_id,
-      created_at: payload.created_at,
-      niche: payload.niche,
-      lead_sources: payload.lead_sources.join(', '),
-    },
+    leadPayload,
+    airtableFields,
+    activityPayload,
+    metadata,
   };
 };

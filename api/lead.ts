@@ -9,16 +9,23 @@ export const config = {
 };
 
 function normalizeLeadPayload(body: any) {
-  if (body?.airtableFields && body?.leadPayload) return body;
+  if (body?.airtableFields && body?.leadPayload && body?.activityPayload && body?.metadata) {
+    return body;
+  }
+
+  const now = new Date().toISOString();
+  const leadId = body?.leadPayload?.lead_id || body?.lead_id || `fs_lead_${Date.now()}`;
 
   const leadPayload = body?.leadPayload || {
-    lead_id: body?.lead_id || `fs_lead_${Date.now()}`,
-    created_at: body?.created_at || new Date().toISOString(),
+    lead_id: leadId,
+    created_at: body?.created_at || now,
     name: body?.name || body?.ingest?.contactName || '',
     email: body?.email || body?.ingest?.contactEmail || '',
     phone: body?.phone || body?.ingest?.phone || '',
     company: body?.company || body?.ingest?.agencyName || '',
     source: body?.source || (Array.isArray(body?.leadSources) ? body.leadSources.join(', ') : '') || 'Website',
+    lead_sources: body?.lead_sources || body?.leadSources || body?.ingest?.leadSources || [],
+    niche: body?.niche || body?.ingest?.niche || '',
     service_need: body?.service_need || body?.primaryProblem || body?.ingest?.primaryProblem || '',
     package_interest: body?.package_interest || '',
     recommended_package: body?.recommended_package || body?.recommendedPackage || '',
@@ -34,39 +41,60 @@ function normalizeLeadPayload(body: any) {
     owner: body?.owner || '',
     next_action: body?.next_action || 'Review new inbound lead',
     notes: body?.notes || '',
-    niche: body?.niche || body?.ingest?.niche || '',
-    lead_sources: body?.lead_sources || body?.leadSources || body?.ingest?.leadSources || [],
+  };
+
+  const airtableFields = body?.airtableFields || {
+    lead_id: leadPayload.lead_id,
+    created_at: leadPayload.created_at,
+    name: leadPayload.name,
+    email: leadPayload.email,
+    phone: leadPayload.phone,
+    company: leadPayload.company,
+    source: leadPayload.source,
+    service_need: leadPayload.service_need,
+    package_interest: leadPayload.package_interest,
+    recommended_package: leadPayload.recommended_package,
+    qualification_status: leadPayload.qualification_status,
+    qualification_reason: leadPayload.qualification_reason,
+    crm_used: leadPayload.crm_used,
+    booking_link: leadPayload.booking_link,
+    current_problem: leadPayload.current_problem,
+    messages_per_day: leadPayload.messages_per_day,
+    needs_booking: leadPayload.needs_booking,
+    multiple_offers: leadPayload.multiple_offers,
+    needs_staff_routing: leadPayload.needs_staff_routing,
+    owner: leadPayload.owner,
+    next_action: leadPayload.next_action,
+    notes: leadPayload.notes,
+    niche: leadPayload.niche,
+    lead_sources: Array.isArray(leadPayload.lead_sources) ? leadPayload.lead_sources.join(', ') : leadPayload.lead_sources,
+  };
+
+  const activityPayload = body?.activityPayload || {
+    activity_id: `act_${Date.now()}`,
+    lead_id: leadPayload.lead_id,
+    tenant_id: body?.tenant_id || 'demo-client',
+    event_name: 'website_intake_submitted',
+    event_timestamp: now,
+    actor: 'website',
+    status: 'success',
+    details: 'Lead submitted from website intake form',
+  };
+
+  const metadata = body?.metadata || {
+    source_app: 'flowstacksales',
+    source_step: body?.step || 'proposal',
+    tenant_id: body?.tenant_id || 'demo-client',
+    event_name: 'website_intake_submitted',
+    submitted_at: now,
   };
 
   return {
     ...body,
     leadPayload,
-    airtableFields: {
-      lead_id: leadPayload.lead_id,
-      created_at: leadPayload.created_at,
-      name: leadPayload.name,
-      email: leadPayload.email,
-      phone: leadPayload.phone,
-      company: leadPayload.company,
-      source: leadPayload.source,
-      service_need: leadPayload.service_need,
-      package_interest: leadPayload.package_interest,
-      recommended_package: leadPayload.recommended_package,
-      qualification_status: leadPayload.qualification_status,
-      qualification_reason: leadPayload.qualification_reason,
-      crm_used: leadPayload.crm_used,
-      booking_link: leadPayload.booking_link,
-      current_problem: leadPayload.current_problem,
-      messages_per_day: leadPayload.messages_per_day,
-      needs_booking: leadPayload.needs_booking,
-      multiple_offers: leadPayload.multiple_offers,
-      needs_staff_routing: leadPayload.needs_staff_routing,
-      owner: leadPayload.owner,
-      next_action: leadPayload.next_action,
-      notes: leadPayload.notes,
-      niche: leadPayload.niche,
-      lead_sources: Array.isArray(leadPayload.lead_sources) ? leadPayload.lead_sources.join(', ') : leadPayload.lead_sources,
-    },
+    airtableFields,
+    activityPayload,
+    metadata,
   };
 }
 
@@ -78,20 +106,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const url = process.env.N8N_WEBHOOK_URL;
   const secret = process.env.N8N_WEBHOOK_SECRET;
 
+  const normalizedBody = normalizeLeadPayload(req.body ?? {});
   console.log("=== Lead API Called ===");
   console.log("Webhook URL:", url);
   console.log("Secret exists:", !!secret);
-
-  const normalizedBody = normalizeLeadPayload(req.body ?? {});
-  console.log("Request body:", normalizedBody);
+  console.log("Normalized request body:", normalizedBody);
 
   if (!url || !secret) {
-    console.error("Missing N8N_WEBHOOK_URL or N8N_WEBHOOK_SECRET");
     return res.status(500).json({ error: "Missing N8N_WEBHOOK_URL or N8N_WEBHOOK_SECRET" });
   }
 
   try {
-    console.log("Sending to n8n...");
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -101,18 +126,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(normalizedBody),
     });
 
-    console.log("n8n response status:", response.status);
     const data = await response.text();
-    console.log("n8n response:", data);
 
     if (!response.ok) {
-      console.error("n8n webhook error:", response.status, data);
-      return res.status(500).json({ error: "Failed to forward lead to n8n", details: data });
+      return res.status(500).json({ error: "Failed to forward lead to ingest", details: data });
     }
 
     return res.status(200).send(data);
   } catch (error) {
-    console.error("Lead endpoint error:", error);
     return res.status(500).json({ error: "Internal server error", details: String(error) });
   }
 }
