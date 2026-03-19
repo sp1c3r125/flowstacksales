@@ -181,12 +181,8 @@ async function airtableRequest(url: string, pat: string, init?: RequestInit) {
 async function findLeadRecord(baseId: string, pat: string, leadId: string, email: string) {
   const filters: string[] = [];
 
-  if (leadId) {
-    filters.push(`{lead_id}="${leadId.replace(/"/g, '\\"')}"`);
-  }
-  if (email) {
-    filters.push(`LOWER({email})="${email.toLowerCase().replace(/"/g, '\\"')}"`);
-  }
+  if (leadId) filters.push(`{lead_id}="${leadId.replace(/"/g, '\\"')}"`);
+  if (email) filters.push(`LOWER({email})="${email.toLowerCase().replace(/"/g, '\\"')}"`);
 
   if (filters.length === 0) return null;
 
@@ -230,11 +226,6 @@ function buildBriefMarkdown(payload: ReturnType<typeof normalizeLeadPayload>) {
     `Lead Sources: ${Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(', ') : ''}`,
     `Primary Problem: ${payload.leadPayload.service_need || ''}`,
     `Problem Detail: ${payload.leadPayload.current_problem || ''}`,
-    `CRM Used: ${payload.leadPayload.crm_used || ''}`,
-    `Booking Link: ${payload.leadPayload.booking_link || ''}`,
-    `Needs Booking: ${payload.leadPayload.needs_booking ? 'Yes' : 'No'}`,
-    `Multiple Offers: ${payload.leadPayload.multiple_offers ? 'Yes' : 'No'}`,
-    `Needs Staff Routing: ${payload.leadPayload.needs_staff_routing ? 'Yes' : 'No'}`,
     ``,
     `## Recommendation`,
     `Package: ${payload.recommendedPackage || payload.leadPayload.recommended_package || ''}`,
@@ -246,34 +237,13 @@ function buildBriefMarkdown(payload: ReturnType<typeof normalizeLeadPayload>) {
   ].join('\n');
 }
 
-function buildSalesEmailHtml(payload: ReturnType<typeof normalizeLeadPayload>) {
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-      <h2>New Flowstack Sales Handoff</h2>
-      <p><strong>Lead:</strong> ${payload.leadPayload.name}</p>
-      <p><strong>Business:</strong> ${payload.leadPayload.company}</p>
-      <p><strong>Email:</strong> ${payload.leadPayload.email}</p>
-      <p><strong>Phone:</strong> ${payload.leadPayload.phone || ''}</p>
-      <p><strong>Recommended Package:</strong> ${payload.recommendedPackage || payload.leadPayload.recommended_package || ''}</p>
-      <p><strong>Qualification Reason:</strong> ${payload.qualificationReason || payload.leadPayload.qualification_reason || ''}</p>
-      <p><strong>Main Problem:</strong> ${payload.leadPayload.service_need || ''}</p>
-      <p><strong>Lead Sources:</strong> ${
-        Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(', ') : ''
-      }</p>
-      <p><strong>Event:</strong> ${payload.metadata.event_name}</p>
-      <hr />
-      <p>The exported brief is attached as a markdown file.</p>
-    </div>
-  `;
-}
-
 async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPayload>) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const emailFrom = process.env.FLOWSTACK_SALES_EMAIL_FROM;
   const emailTo = process.env.FLOWSTACK_SALES_EMAIL_TO;
 
   if (!resendApiKey || !emailFrom || !emailTo) {
-    return { sent: false, skipped: true, reason: 'Missing RESEND_API_KEY or FLOWSTACK_SALES_EMAIL_FROM / FLOWSTACK_SALES_EMAIL_TO' };
+    return { sent: false, skipped: true, reason: 'Missing RESEND / sales email env vars' };
   }
 
   const briefMarkdown = buildBriefMarkdown(payload);
@@ -288,8 +258,8 @@ async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPay
     body: JSON.stringify({
       from: emailFrom,
       to: [emailTo],
-      subject: `Flowstack Sales Handoff — ${payload.leadPayload.company} — ${payload.recommendedPackage || payload.leadPayload.recommended_package || 'Recommendation'}`,
-      html: buildSalesEmailHtml(payload),
+      subject: `Flowstack Sales Handoff — ${payload.leadPayload.company}`,
+      html: `<p>New sales handoff for <strong>${payload.leadPayload.company}</strong>.</p><p>Recommended package: <strong>${payload.recommendedPackage || ''}</strong></p>`,
       text: briefMarkdown,
       attachments: [
         {
@@ -306,11 +276,7 @@ async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPay
     throw new Error(`Resend email failed (${response.status}) ${text}`);
   }
 
-  return {
-    sent: true,
-    skipped: false,
-    response: text ? JSON.parse(text) : null,
-  };
+  return { sent: true, skipped: false, response: text ? JSON.parse(text) : null };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -324,13 +290,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!pat || !baseId) {
     return res.status(500).json({
       error: "Missing FLOWSTACK_AIRTABLE_PAT or FLOWSTACK_AIRTABLE_BASE_ID",
+      debug: {
+        has_pat: !!pat,
+        has_base_id: !!baseId,
+      },
     });
   }
 
   try {
     const normalizedBody = normalizeLeadPayload(req.body ?? {});
     console.log("=== Direct Lead Ingest Called ===");
-    console.log("Normalized request body:", normalizedBody);
+    console.log("Event:", normalizedBody.metadata.event_name);
+    console.log("Lead email:", normalizedBody.leadPayload.email);
+    console.log("Lead company:", normalizedBody.leadPayload.company);
 
     const existingLead = await findLeadRecord(
       baseId,

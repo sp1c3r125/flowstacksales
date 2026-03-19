@@ -127,43 +127,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
-  const buildBriefText = () => {
-    return [
-      `Flowstack Proposal`,
-      ``,
-      `Generated: ${new Date().toISOString()}`,
-      ``,
-      `CONTACT`,
-      `Name: ${appState.ingest.contactName}`,
-      `Business: ${appState.ingest.agencyName}`,
-      `Email: ${appState.ingest.contactEmail}`,
-      `Phone: ${appState.ingest.phone}`,
-      ``,
-      `BUSINESS CONTEXT`,
-      `Niche: ${appState.ingest.niche}`,
-      `Lead Sources: ${appState.ingest.leadSources.join(', ')}`,
-      `Primary Problem: ${appState.ingest.primaryProblem}`,
-      `Problem Detail: ${appState.ingest.problemDetail || ''}`,
-      `CRM Used: ${appState.ingest.crmUsed || ''}`,
-      `Booking Link: ${appState.ingest.bookingLink || ''}`,
-      `Needs Booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
-      `Multiple Offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
-      `Needs Staff Routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
-      ``,
-      `METRICS`,
-      `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
-      `Annual Leakage: ${formatCurrency(annualLeakage)}`,
-      ``,
-      `RECOMMENDATION`,
-      `Package: ${leadCapture.recommendedPackage}`,
-      `Reason: ${leadCapture.qualificationReason}`,
-      ``,
-      `PROPOSAL`,
-      proposal,
-      ``,
-    ].join('\n');
-  };
-
   const downloadBriefPdf = () => {
     const doc = new jsPDF({
       orientation: 'p',
