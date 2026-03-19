@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Input, Button, Select } from '../components/UI';
 import { IngestData, IngestSchema } from '../types';
@@ -56,6 +56,52 @@ const PRIMARY_PROBLEM_OPTIONS = [
   { value: 'No CRM or weak CRM process', label: 'No CRM or weak CRM process' },
   { value: 'Other', label: 'Other' },
 ];
+
+const DRAFT_KEY = 'flowstack_ingest_identity_draft_v1';
+
+const NAME_PLACEHOLDERS = [
+  'e.g. Alex Morgan',
+  'e.g. Jordan Reyes',
+  'e.g. Taylor Cruz',
+  'e.g. Sam Carter',
+  'e.g. Casey Bennett',
+  'e.g. Riley Santos',
+  'e.g. Avery Collins',
+  'e.g. Cameron Lee',
+];
+
+const pickSessionNamePlaceholder = () => {
+  if (typeof window === 'undefined') return NAME_PLACEHOLDERS[0];
+  const key = 'flowstack_name_placeholder_v1';
+  const existing = window.sessionStorage.getItem(key);
+  if (existing) return existing;
+  const picked = NAME_PLACEHOLDERS[Math.floor(Math.random() * NAME_PLACEHOLDERS.length)];
+  window.sessionStorage.setItem(key, picked);
+  return picked;
+};
+
+const loadDraft = (): Partial<IngestData> => {
+  if (typeof window === 'undefined') return {};
+
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+
+    return {
+      contactName: parsed.contactName || '',
+      agencyName: parsed.agencyName || '',
+      contactEmail: parsed.contactEmail || '',
+      phone: parsed.phone || '',
+      niche: parsed.niche || '',
+      crmUsed: parsed.crmUsed || '',
+      bookingLink: parsed.bookingLink || '',
+      problemDetail: parsed.problemDetail || '',
+    };
+  } catch {
+    return {};
+  }
+};
 
 const YesNoPill: React.FC<{ label: string; value: boolean; onChange: (next: boolean) => void }> = ({ label, value, onChange }) => (
   <div className="space-y-2">
@@ -119,6 +165,44 @@ const MultiSelectPills: React.FC<{
 
 export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof IngestData, string>>>({});
+  const namePlaceholder = useMemo(() => pickSessionNamePlaceholder(), []);
+
+  useEffect(() => {
+    const draft = loadDraft();
+    if (!Object.keys(draft).length) return;
+
+    onUpdate({
+      ...data,
+      ...draft,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const draft = {
+      contactName: data.contactName || '',
+      agencyName: data.agencyName || '',
+      contactEmail: data.contactEmail || '',
+      phone: data.phone || '',
+      niche: data.niche || '',
+      crmUsed: data.crmUsed || '',
+      bookingLink: data.bookingLink || '',
+      problemDetail: data.problemDetail || '',
+    };
+
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [
+    data.contactName,
+    data.agencyName,
+    data.contactEmail,
+    data.phone,
+    data.niche,
+    data.crmUsed,
+    data.bookingLink,
+    data.problemDetail,
+  ]);
 
   const handleChange = <K extends keyof IngestData>(field: K, value: IngestData[K]) => {
     onUpdate({ ...data, [field]: value });
@@ -153,14 +237,20 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
         <BentoCard title="Business and contact" className="col-span-12 md:col-span-7" accent="green">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
+              id="contactName"
+              name="name"
+              autoComplete="name"
               label="Your name"
               value={data.contactName}
               onChange={e => handleChange('contactName', e.target.value)}
               error={errors.contactName}
-              placeholder="e.g. Keanne Acar"
+              placeholder={namePlaceholder}
               prefix={<User size={14} />}
             />
             <Input
+              id="agencyName"
+              name="organization"
+              autoComplete="organization"
               label="Business name"
               value={data.agencyName}
               onChange={e => handleChange('agencyName', e.target.value)}
@@ -169,8 +259,12 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               prefix={<Building2 size={14} />}
             />
             <Input
-              label="Best email"
+              id="contactEmail"
+              name="email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
+              label="Best email"
               value={data.contactEmail}
               onChange={e => handleChange('contactEmail', e.target.value)}
               error={errors.contactEmail}
@@ -178,6 +272,10 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               prefix={<Mail size={14} />}
             />
             <Input
+              id="phone"
+              name="tel"
+              type="tel"
+              autoComplete="tel"
               label="Phone"
               value={data.phone}
               onChange={e => handleChange('phone', e.target.value)}
