@@ -204,6 +204,13 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .replace(/^\s*[-*+]\s+/gm, '• ')
       .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
       .replace(/^>\s?/gm, '')
+      .replace(/^#{1,6}\s*/gm, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^\s*[-*+]\s+/gm, '• ')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   };
@@ -298,6 +305,19 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     });
 
     return padding + titleHeight + 10 + bodyHeight + padding;
+    const labelWidth = 110;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`${label}:`, x, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const lines = doc.splitTextToSize(value || '-', maxWidth - labelWidth);
+    doc.text(lines, x + labelWidth, y);
+
+    return Math.max(20, lines.length * 14 + 4);
   };
 
   const drawBulletedCard = (
@@ -316,6 +336,18 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const bodyWidth = width - padding * 2 - 12;
     const normalizedItems = items.map((item) => (item || '-').replace(/^•\s*/, '').trim() || '-');
     const height = forcedHeight ?? getBulletedCardHeight(doc, title, items, width);
+    const padding = 14;
+    const titleHeight = 18;
+    const lineHeight = 14;
+    const bodyWidth = width - padding * 2;
+
+    const wrappedLines: string[] = [];
+    items.forEach((item) => {
+      const lines = doc.splitTextToSize(item || '-', bodyWidth);
+      wrappedLines.push(...lines);
+    });
+
+    const height = padding + titleHeight + 10 + wrappedLines.length * lineHeight + padding;
 
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(226, 232, 240);
@@ -345,6 +377,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.text(lines, x + padding + 10, cursorY);
 
       cursorY += Math.max(1, lines.length) * lineHeight + bulletGap;
+    let cursorY = y + padding + titleHeight + 10;
+    wrappedLines.forEach((line) => {
+      doc.text(line, x + padding, cursorY);
+      cursorY += lineHeight;
     });
 
     return height;
@@ -440,6 +476,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const contentWidth = pageWidth - margin * 2;
     const lineHeight = 16;
     const narrativeBlocks = splitNarrativeBlocks(proposal);
+    const cleanProposal = stripMarkdown(proposal);
 
     let y = margin;
 
@@ -563,6 +600,144 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const outHeight = getBulletedCardHeight(doc, 'Out of Scope', outItems, contentWidth);
     ensurePageSpace(outHeight + 24);
     drawBulletedCard(doc, 'Out of Scope', outItems, margin, y, contentWidth, outHeight);
+    y = 150;
+
+    drawVerticalGradient(doc, margin, y, contentWidth, 126, [236, 253, 245], [209, 250, 229], 56);
+    doc.setDrawColor(167, 243, 208);
+    doc.roundedRect(margin, y, contentWidth, 126, 12, 12, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(6, 95, 70);
+    doc.text(recommended.name, margin + 18, y + 30);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(6, 78, 59);
+    const taglineLines = doc.splitTextToSize(recommended.tagline, contentWidth - 36);
+    doc.text(taglineLines, margin + 18, y + 50);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Severity', margin + 18, y + 82);
+    doc.text('Bottleneck', margin + 150, y + 82);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(severity, margin + 72, y + 82);
+    const bottleneckLines = doc.splitTextToSize(bottleneck, contentWidth - 250);
+    doc.text(bottleneckLines, margin + 214, y + 82);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Qualification Reason', margin + 18, y + 104);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 156);
+    doc.text(reasonLines, margin + 140, y + 104);
+
+    y += 146;
+
+    const leftHeight = drawBulletedCard(
+      doc,
+      'Revenue at Risk',
+      [
+        `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
+        `Annual Leakage: ${formatCurrency(annualLeakage)}`,
+      ],
+      margin,
+      y,
+      (contentWidth - 12) / 2
+    );
+
+    const rightHeight = drawBulletedCard(
+      doc,
+      'Recommendation',
+      [
+        `Tier: ${recommended.name}`,
+        `Setup: ${recommended.setup}`,
+        `Monthly: ${recommended.monthly}`,
+        ...(recommended.altPricing ? [recommended.altPricing] : []),
+      ],
+      margin + (contentWidth - 12) / 2 + 12,
+      y,
+      (contentWidth - 12) / 2
+    );
+
+    y += Math.max(leftHeight, rightHeight) + 24;
+
+    ensurePageSpace(220);
+    drawSectionTitle(doc, 'Executive Summary', margin, y);
+    y += 20;
+
+    y += drawLabelValue(doc, 'Company', company, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Niche', niche, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Contact', contactName, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Email', contactEmail, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Severity', severity, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Bottleneck', bottleneck, margin, y, contentWidth);
+
+    y += 6;
+    drawDivider(doc, pageWidth, margin, y);
+    y += 18;
+
+    ensurePageSpace(280);
+    drawSectionTitle(doc, 'Lead Details', margin, y);
+    y += 20;
+
+    y += drawLabelValue(doc, 'Lead Sources', leadSources, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Primary Problem', primaryProblem, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Problem Detail', problemDetail || '-', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'CRM Used', crmUsed, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Booking Link', bookingLink, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth);
+
+    y += 6;
+    drawDivider(doc, pageWidth, margin, y);
+    y += 18;
+
+    ensurePageSpace(220);
+    drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
+    y += 20;
+
+    const includedHeight = drawBulletedCard(
+      doc,
+      'Included',
+      recommended.includes.map(item => `• ${item}`),
+      margin,
+      y,
+      (contentWidth - 12) / 2
+    );
+
+    const stackHeight = drawBulletedCard(
+      doc,
+      'Proposed Architecture',
+      [
+        `• ${proposedArchitecture}`,
+        `• Airtable as ops backbone`,
+        `• Website as qualification layer`,
+        `• Direct backend ingest + activity logging`,
+      ],
+      margin + (contentWidth - 12) / 2 + 12,
+      y,
+      (contentWidth - 12) / 2
+    );
+
+    y += Math.max(includedHeight, stackHeight) + 18;
+
+    const outHeight = drawBulletedCard(
+      doc,
+      'Out of Scope',
+      [...recommended.limits, ...recommended.excludes].map(item => `• ${item}`),
+      margin,
+      y,
+      contentWidth
+    );
+
     y += outHeight + 24;
 
     ensurePageSpace(140);
@@ -641,6 +816,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         lineHeight: 14,
       });
     });
+    addWrappedText(cleanProposal || '-', 10, [51, 65, 85], 10);
 
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
