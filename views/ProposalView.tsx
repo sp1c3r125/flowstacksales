@@ -1,4 +1,4 @@
-Ôªøimport React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
@@ -65,7 +65,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const safeCompany = company.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Lead';
     const safeNiche = niche.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Unknown';
     const date = new Date().toISOString().slice(0, 10);
-    return `FlowStackOS Intake Report ‚Äî ${safeCompany} (${safeNiche}) ‚Äî ${date}.pdf`;
+    return `FlowStackOS Intake Report ó ${safeCompany} (${safeNiche}) ó ${date}.pdf`;
   }, [company, niche]);
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .replace(/\*(.*?)\*/g, '$1')
       .replace(/_(.*?)_/g, '$1')
       .replace(/`([^`]+)`/g, '$1')
-      .replace(/^\s*[-*+]\s+/gm, '‚Ä¢ ')
+      .replace(/^\s*[-*+]\s+/gm, 'ï ')
       .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
       .replace(/^>\s?/gm, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -290,7 +290,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     let bodyHeight = 0;
 
     items.forEach((item) => {
-      const normalized = (item || '-').replace(/^‚Ä¢\s*/, '').trim() || '-';
+      const normalized = (item || '-').replace(/^ï\s*/, '').trim() || '-';
       const lines = doc.splitTextToSize(normalized, bodyWidth);
       bodyHeight += Math.max(1, lines.length) * lineHeight + bulletGap;
     });
@@ -312,7 +312,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const lineHeight = 14;
     const bulletGap = 4;
     const bodyWidth = width - padding * 2 - 12;
-    const normalizedItems = items.map((item) => (item || '-').replace(/^‚Ä¢\s*/, '').trim() || '-');
+    const normalizedItems = items.map((item) => (item || '-').replace(/^ï\s*/, '').trim() || '-');
     const height = forcedHeight ?? getBulletedCardHeight(doc, title, items, width);
 
     doc.setFillColor(255, 255, 255);
@@ -332,7 +332,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(16, 185, 129);
-      doc.text('‚Ä¢', x + padding, cursorY);
+      doc.text('ï', x + padding, cursorY);
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
@@ -555,12 +555,12 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
     y += 20;
 
-    const includedItems = recommended.includes.map((item) => `‚Ä¢ ${item}`);
+    const includedItems = recommended.includes.map((item) => `ï ${item}`);
     const stackItems = [
-      `‚Ä¢ ${proposedArchitecture}`,
-      '‚Ä¢ Airtable as ops backbone',
-      '‚Ä¢ Website as qualification layer',
-      '‚Ä¢ Direct backend ingest + activity logging',
+      `ï ${proposedArchitecture}`,
+      'ï Airtable as ops backbone',
+      'ï Website as qualification layer',
+      'ï Direct backend ingest + activity logging',
     ];
 
     const includedHeight = getBulletedCardHeight(doc, 'Included', includedItems, fullWidth);
@@ -573,7 +573,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     drawBulletedCard(doc, 'Proposed Architecture', stackItems, margin, y, fullWidth, stackHeight);
     y += stackHeight + 18;
 
-    const outItems = [...recommended.limits, ...recommended.excludes].map((item) => `‚Ä¢ ${item}`);
+    const outItems = [...recommended.limits, ...recommended.excludes].map((item) => `ï ${item}`);
     const outHeight = getBulletedCardHeight(doc, 'Out of Scope', outItems, contentWidth);
 
     ensurePageSpace(outHeight + 24);
@@ -604,11 +604,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         .map((line) => line.trim())
         .filter(Boolean);
 
-      const bulletLines = lines.filter((line) => line.startsWith('‚Ä¢ '));
+      const bulletLines = lines.filter((line) => line.startsWith('ï '));
       const isHeading =
         lines.length === 1 &&
-        /^[A-Z][A-Za-z0-9\s/&():‚Äú‚Äù"'-]{1,80}$/.test(lines[0]) &&
-        !lines[0].startsWith('‚Ä¢');
+        /^[A-Z][A-Za-z0-9\s/&():ìî"'-]{1,80}$/.test(lines[0]) &&
+        !lines[0].startsWith('ï');
 
       if (isHeading) {
         addWrappedTextBlock(lines[0], {
@@ -623,14 +623,14 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
       if (bulletLines.length === lines.length && bulletLines.length > 0) {
         bulletLines.forEach((line) => {
-          const normalized = line.replace(/^‚Ä¢\s*/, '').trim() || '-';
+          const normalized = line.replace(/^ï\s*/, '').trim() || '-';
           const bulletWrapped = doc.splitTextToSize(normalized, contentWidth - 14);
           ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 4));
 
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.setTextColor(16, 185, 129);
-          doc.text('‚Ä¢', margin, y);
+          doc.text('ï', margin, y);
 
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(51, 65, 85);
@@ -789,7 +789,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
               <div className="space-y-2">
                 {recommended.includes.map((item) => (
-                  <div key={item} className="text-sm text-slate-300">‚Ä¢ {item}</div>
+                  <div key={item} className="text-sm text-slate-300">ï {item}</div>
                 ))}
               </div>
             </div>
@@ -797,7 +797,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
               <div className="space-y-2">
                 {[...recommended.limits, ...recommended.excludes].map((item) => (
-                  <div key={item} className="text-sm text-slate-300">‚Ä¢ {item}</div>
+                  <div key={item} className="text-sm text-slate-300">ï {item}</div>
                 ))}
               </div>
             </div>
