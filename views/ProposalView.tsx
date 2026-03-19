@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
@@ -35,7 +35,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const primaryProblem = appState.ingest.primaryProblem || 'Unknown';
   const problemDetail = appState.ingest.problemDetail || '';
   const crmUsed = appState.ingest.crmUsed || 'Not specified';
-  const bookingLink = appState.ingest.bookingLink || 'Not provided';
 
   const severity = useMemo(() => {
     if (annualLeakage >= 1_000_000 || monthlyLeakage >= 100_000) return 'Critical';
@@ -242,42 +241,45 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   };
 
   const drawSectionTitle = (doc: jsPDF, title: string, x: number, y: number) => {
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(16, 185, 129);
     doc.text(title.toUpperCase(), x, y);
   };
 
-  const drawDivider = (doc: jsPDF, pageWidth: number, margin: number, y: number) => {
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, y, pageWidth - margin, y);
-  };
-
-  const drawLabelValue = (
+  const drawWrappedTextBlock = (
     doc: jsPDF,
-    label: string,
-    value: string,
+    text: string,
     x: number,
     y: number,
-    maxWidth: number
+    maxWidth: number,
+    options?: {
+      fontSize?: number;
+      color?: [number, number, number];
+      extraGap?: number;
+      lineHeight?: number;
+      fontStyle?: 'normal' | 'bold';
+    }
   ) => {
-    const labelWidth = 140;
-    const valueWidth = Math.max(40, maxWidth - labelWidth - 12);
+    const {
+      fontSize = 10,
+      color = [51, 65, 85],
+      extraGap = 8,
+      lineHeight = 14,
+      fontStyle = 'normal',
+    } = options || {};
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105);
-    const labelLines = doc.splitTextToSize(`${label}:`, labelWidth);
-    doc.text(labelLines, x, y);
+    const safe = (text || '-').trim() || '-';
+    const lines = doc.splitTextToSize(safe, maxWidth);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    const valueLines = doc.splitTextToSize((value || '-').trim() || '-', valueWidth);
-    doc.text(valueLines, x + labelWidth + 12, y);
+    doc.setCharSpace?.(0);
+    doc.setFont('helvetica', fontStyle);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(color[0], color[1], color[2]);
+    doc.text(lines, x, y);
 
-    const labelHeight = Math.max(14, labelLines.length * 14);
-    const valueHeight = Math.max(14, valueLines.length * 14);
-    return Math.max(labelHeight, valueHeight) + 8;
+    return lines.length * lineHeight + extraGap;
   };
 
   const getBulletedCardHeight = (doc: jsPDF, title: string, items: string[], width: number) => {
@@ -319,6 +321,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(x, y, width, height, 10, 10, 'FD');
 
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
@@ -329,12 +332,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     normalizedItems.forEach((item) => {
       const lines = doc.splitTextToSize(item, bodyWidth);
 
+      doc.setCharSpace?.(0);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(16, 185, 129);
       doc.text('•', x + padding, cursorY);
 
+      doc.setCharSpace?.(0);
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
       doc.setTextColor(51, 65, 85);
       doc.text(lines, x + padding + 10, cursorY);
 
@@ -384,12 +390,14 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setDrawColor(167, 243, 208);
     doc.roundedRect(x, y, width, cardHeight, 12, 12, 'FD');
 
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.setTextColor(6, 78, 59);
     doc.text(data.packageName, x + pad, cy);
     cy += 28;
 
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(6, 78, 59);
@@ -397,12 +405,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     cy += rowHeight(taglineLines) + 8;
 
     const drawSummaryRow = (label: string, valueLines: string[]) => {
+      doc.setCharSpace?.(0);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(71, 85, 105);
       doc.text(label, x + pad, cy);
 
+      doc.setCharSpace?.(0);
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
       doc.text(valueLines, x + pad + rowLabelWidth, cy);
 
@@ -439,43 +450,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       }
     };
 
-    const addWrappedTextBlock = (
-      text: string,
-      options?: {
-        fontSize?: number;
-        color?: [number, number, number];
-        extraGap?: number;
-        lineHeight?: number;
-        fontStyle?: 'normal' | 'bold';
-      }
-    ) => {
-      const {
-        fontSize = 10,
-        color = [51, 65, 85],
-        extraGap = 8,
-        lineHeight = 14,
-        fontStyle = 'normal',
-      } = options || {};
-
-      const safe = (text || '-').trim() || '-';
-      const lines = doc.splitTextToSize(safe, contentWidth);
-      ensurePageSpace(Math.max(24, lines.length * lineHeight + extraGap));
-
-      doc.setFont('helvetica', fontStyle);
-      doc.setFontSize(fontSize);
-      doc.setTextColor(color[0], color[1], color[2]);
-      doc.text(lines, margin, y);
-
-      y += lines.length * lineHeight + extraGap;
-    };
-
     drawVerticalGradient(doc, 0, 0, pageWidth, 120, [15, 23, 42], [16, 185, 129], 88);
 
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.setTextColor(255, 255, 255);
     doc.text('FlowStackOS Intake Report', margin, 46);
 
+    doc.setCharSpace?.(0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(226, 232, 240);
@@ -485,13 +468,23 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y = 144;
 
-    const fullWidth = contentWidth;
-
     const businessSnapshotItems = [
       `Business: ${company}`,
       `Type: ${niche}`,
       `Contact: ${contactName}`,
       `Email: ${contactEmail}`,
+    ];
+
+    const riskItems = [
+      `Monthly leakage: ${formatCurrency(monthlyLeakage)}`,
+      `Annual leakage: ${formatCurrency(annualLeakage)}`,
+    ];
+
+    const investmentItems = [
+      `Package: ${recommended.name}`,
+      `Setup: ${recommended.setup}`,
+      `Monthly: ${recommended.monthly}`,
+      ...(recommended.altPricing ? [`Alternative: ${recommended.altPricing}`] : []),
     ];
 
     const whyPackageItems = [
@@ -502,22 +495,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     const operationalSignalItems = [
       `Lead sources: ${leadSources}`,
+      `Primary problem: ${primaryProblem}`,
       `Needs booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
       `Multiple offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
       `Needs staff routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
       `Messages per day: ${String(appState.ingest.messagesPerDay || 0)}`,
-    ];
-
-    const investmentItems = [
-      `Package: ${recommended.name}`,
-      `Setup: ${recommended.setup}`,
-      `Monthly: ${recommended.monthly}`,
-      ...(recommended.altPricing ? [`Alternative: ${recommended.altPricing}`] : []),
-    ];
-
-    const riskItems = [
-      `Monthly leakage: ${formatCurrency(monthlyLeakage)}`,
-      `Annual leakage: ${formatCurrency(annualLeakage)}`,
     ];
 
     const summaryHeight = drawSummaryCard(doc, margin, y, contentWidth, {
@@ -530,30 +512,30 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y += summaryHeight + 18;
 
-    const snapshotHeight = getBulletedCardHeight(doc, 'Business Snapshot', businessSnapshotItems, fullWidth);
+    const snapshotHeight = getBulletedCardHeight(doc, 'Business Snapshot', businessSnapshotItems, contentWidth);
     ensurePageSpace(snapshotHeight + 14);
-    drawBulletedCard(doc, 'Business Snapshot', businessSnapshotItems, margin, y, fullWidth, snapshotHeight);
+    drawBulletedCard(doc, 'Business Snapshot', businessSnapshotItems, margin, y, contentWidth, snapshotHeight);
     y += snapshotHeight + 14;
 
-    const riskHeight = getBulletedCardHeight(doc, 'Revenue at Risk', riskItems, fullWidth);
+    const riskHeight = getBulletedCardHeight(doc, 'Revenue at Risk', riskItems, contentWidth);
     ensurePageSpace(riskHeight + 14);
-    drawBulletedCard(doc, 'Revenue at Risk', riskItems, margin, y, fullWidth, riskHeight);
+    drawBulletedCard(doc, 'Revenue at Risk', riskItems, margin, y, contentWidth, riskHeight);
     y += riskHeight + 14;
 
-    const investmentHeight = getBulletedCardHeight(doc, 'Recommended Investment', investmentItems, fullWidth);
+    const investmentHeight = getBulletedCardHeight(doc, 'Recommended Investment', investmentItems, contentWidth);
     ensurePageSpace(investmentHeight + 14);
-    drawBulletedCard(doc, 'Recommended Investment', investmentItems, margin, y, fullWidth, investmentHeight);
+    drawBulletedCard(doc, 'Recommended Investment', investmentItems, margin, y, contentWidth, investmentHeight);
     y += investmentHeight + 14;
 
-    const whyHeight = getBulletedCardHeight(doc, 'Why This Package', whyPackageItems, fullWidth);
+    const whyHeight = getBulletedCardHeight(doc, 'Why This Package', whyPackageItems, contentWidth);
     ensurePageSpace(whyHeight + 14);
-    drawBulletedCard(doc, 'Why This Package', whyPackageItems, margin, y, fullWidth, whyHeight);
+    drawBulletedCard(doc, 'Why This Package', whyPackageItems, margin, y, contentWidth, whyHeight);
     y += whyHeight + 14;
 
-    const opsHeight = getBulletedCardHeight(doc, 'Operational Signals', operationalSignalItems, fullWidth);
-    ensurePageSpace(opsHeight + 20);
-    drawBulletedCard(doc, 'Operational Signals', operationalSignalItems, margin, y, fullWidth, opsHeight);
-    y += opsHeight + 20;
+    const opsHeight = getBulletedCardHeight(doc, 'Operational Signals', operationalSignalItems, contentWidth);
+    ensurePageSpace(opsHeight + 24);
+    drawBulletedCard(doc, 'Operational Signals', operationalSignalItems, margin, y, contentWidth, opsHeight);
+    y += opsHeight + 24;
 
     ensurePageSpace(240);
     drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
@@ -567,19 +549,18 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       '• Direct backend ingest + activity logging',
     ];
 
-    const includedHeight = getBulletedCardHeight(doc, 'Included', includedItems, fullWidth);
+    const includedHeight = getBulletedCardHeight(doc, 'Included', includedItems, contentWidth);
     ensurePageSpace(includedHeight + 16);
-    drawBulletedCard(doc, 'Included', includedItems, margin, y, fullWidth, includedHeight);
+    drawBulletedCard(doc, 'Included', includedItems, margin, y, contentWidth, includedHeight);
     y += includedHeight + 16;
 
-    const stackHeight = getBulletedCardHeight(doc, 'Proposed Architecture', stackItems, fullWidth);
+    const stackHeight = getBulletedCardHeight(doc, 'Proposed Architecture', stackItems, contentWidth);
     ensurePageSpace(stackHeight + 18);
-    drawBulletedCard(doc, 'Proposed Architecture', stackItems, margin, y, fullWidth, stackHeight);
+    drawBulletedCard(doc, 'Proposed Architecture', stackItems, margin, y, contentWidth, stackHeight);
     y += stackHeight + 18;
 
     const outItems = [...recommended.limits, ...recommended.excludes].map((item) => `• ${item}`);
     const outHeight = getBulletedCardHeight(doc, 'Out of Scope', outItems, contentWidth);
-
     ensurePageSpace(outHeight + 24);
     drawBulletedCard(doc, 'Out of Scope', outItems, margin, y, contentWidth, outHeight);
     y += outHeight + 24;
@@ -588,13 +569,17 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     drawSectionTitle(doc, 'Next Steps', margin, y);
     y += 20;
 
-    addWrappedTextBlock(
+    y += drawWrappedTextBlock(
+      doc,
       [
         '1. Review the recommended package and confirm fit.',
         '2. Finalize the intake-to-ops workflow and required integrations.',
         '3. Configure implementation scope, access, and deployment sequence.',
         '4. Launch the intake automation, routing, and reporting loop.',
       ].join('\n'),
+      margin,
+      y,
+      contentWidth,
       { fontSize: 10, color: [51, 65, 85], extraGap: 14, lineHeight: 14 }
     );
 
@@ -615,7 +600,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         !lines[0].startsWith('•');
 
       if (isHeading) {
-        addWrappedTextBlock(lines[0], {
+        y += drawWrappedTextBlock(doc, lines[0], margin, y, contentWidth, {
           fontSize: 11,
           color: [15, 23, 42],
           extraGap: 8,
@@ -631,11 +616,13 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           const bulletWrapped = doc.splitTextToSize(normalized, contentWidth - 14);
           ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 4));
 
+          doc.setCharSpace?.(0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.setTextColor(16, 185, 129);
           doc.text('•', margin, y);
 
+          doc.setCharSpace?.(0);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(51, 65, 85);
           doc.text(bulletWrapped, margin + 10, y);
@@ -647,7 +634,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         return;
       }
 
-      addWrappedTextBlock(lines.join(' '), {
+      y += drawWrappedTextBlock(doc, lines.join(' '), margin, y, contentWidth, {
         fontSize: 10,
         color: [51, 65, 85],
         extraGap: 10,
@@ -660,6 +647,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.setPage(i);
       doc.setDrawColor(226, 232, 240);
       doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+      doc.setCharSpace?.(0);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139);
