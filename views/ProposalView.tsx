@@ -65,7 +65,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const safeCompany = company.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Lead';
     const safeNiche = niche.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Unknown';
     const date = new Date().toISOString().slice(0, 10);
-    return `FlowStackOS Intake Report ó ${safeCompany} (${safeNiche}) ó ${date}.pdf`;
+    return `FlowStackOS Intake Report ‚Äî ${safeCompany} (${safeNiche}) ‚Äî ${date}.pdf`;
   }, [company, niche]);
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .replace(/\*(.*?)\*/g, '$1')
       .replace(/_(.*?)_/g, '$1')
       .replace(/`([^`]+)`/g, '$1')
-      .replace(/^\s*[-*+]\s+/gm, 'ï ')
+      .replace(/^\s*[-*+]\s+/gm, '‚Ä¢ ')
       .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
       .replace(/^>\s?/gm, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -290,7 +290,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     let bodyHeight = 0;
 
     items.forEach((item) => {
-      const normalized = (item || '-').replace(/^ï\s*/, '').trim() || '-';
+      const normalized = (item || '-').replace(/^‚Ä¢\s*/, '').trim() || '-';
       const lines = doc.splitTextToSize(normalized, bodyWidth);
       bodyHeight += Math.max(1, lines.length) * lineHeight + bulletGap;
     });
@@ -312,7 +312,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const lineHeight = 14;
     const bulletGap = 4;
     const bodyWidth = width - padding * 2 - 12;
-    const normalizedItems = items.map((item) => (item || '-').replace(/^ï\s*/, '').trim() || '-');
+    const normalizedItems = items.map((item) => (item || '-').replace(/^‚Ä¢\s*/, '').trim() || '-');
     const height = forcedHeight ?? getBulletedCardHeight(doc, title, items, width);
 
     doc.setFillColor(255, 255, 255);
@@ -332,7 +332,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(16, 185, 129);
-      doc.text('ï', x + padding, cursorY);
+      doc.text('‚Ä¢', x + padding, cursorY);
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
@@ -485,6 +485,41 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y = 144;
 
+    const fullWidth = contentWidth;
+
+    const businessSnapshotItems = [
+      `Business: ${company}`,
+      `Type: ${niche}`,
+      `Contact: ${contactName}`,
+      `Email: ${contactEmail}`,
+    ];
+
+    const whyPackageItems = [
+      `Severity: ${severity}`,
+      `Main bottleneck: ${bottleneck}`,
+      `Qualification reason: ${leadCapture.qualificationReason || '-'}`,
+    ];
+
+    const operationalSignalItems = [
+      `Lead sources: ${leadSources}`,
+      `Needs booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
+      `Multiple offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
+      `Needs staff routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
+      `Messages per day: ${String(appState.ingest.messagesPerDay || 0)}`,
+    ];
+
+    const investmentItems = [
+      `Package: ${recommended.name}`,
+      `Setup: ${recommended.setup}`,
+      `Monthly: ${recommended.monthly}`,
+      ...(recommended.altPricing ? [`Alternative: ${recommended.altPricing}`] : []),
+    ];
+
+    const riskItems = [
+      `Monthly leakage: ${formatCurrency(monthlyLeakage)}`,
+      `Annual leakage: ${formatCurrency(annualLeakage)}`,
+    ];
+
     const summaryHeight = drawSummaryCard(doc, margin, y, contentWidth, {
       packageName: recommended.name,
       tagline: recommended.tagline || '-',
@@ -493,74 +528,43 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       qualificationReason: leadCapture.qualificationReason || '-',
     });
 
-    y += summaryHeight + 22;
+    y += summaryHeight + 18;
 
-    const fullWidth = contentWidth;
-
-    const riskItems = [
-      `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
-      `Annual Leakage: ${formatCurrency(annualLeakage)}`,
-    ];
-
-    const recommendationItems = [
-      `Tier: ${recommended.name}`,
-      `Setup: ${recommended.setup}`,
-      `Monthly: ${recommended.monthly}`,
-      ...(recommended.altPricing ? [recommended.altPricing] : []),
-    ];
+    const snapshotHeight = getBulletedCardHeight(doc, 'Business Snapshot', businessSnapshotItems, fullWidth);
+    ensurePageSpace(snapshotHeight + 14);
+    drawBulletedCard(doc, 'Business Snapshot', businessSnapshotItems, margin, y, fullWidth, snapshotHeight);
+    y += snapshotHeight + 14;
 
     const riskHeight = getBulletedCardHeight(doc, 'Revenue at Risk', riskItems, fullWidth);
-    ensurePageSpace(riskHeight + 16);
+    ensurePageSpace(riskHeight + 14);
     drawBulletedCard(doc, 'Revenue at Risk', riskItems, margin, y, fullWidth, riskHeight);
-    y += riskHeight + 16;
+    y += riskHeight + 14;
 
-    const recommendationHeight = getBulletedCardHeight(doc, 'Recommendation', recommendationItems, fullWidth);
-    ensurePageSpace(recommendationHeight + 24);
-    drawBulletedCard(doc, 'Recommendation', recommendationItems, margin, y, fullWidth, recommendationHeight);
-    y += recommendationHeight + 24;
+    const investmentHeight = getBulletedCardHeight(doc, 'Recommended Investment', investmentItems, fullWidth);
+    ensurePageSpace(investmentHeight + 14);
+    drawBulletedCard(doc, 'Recommended Investment', investmentItems, margin, y, fullWidth, investmentHeight);
+    y += investmentHeight + 14;
 
-    ensurePageSpace(220);
-    drawSectionTitle(doc, 'Executive Summary', margin, y);
-    y += 20;
+    const whyHeight = getBulletedCardHeight(doc, 'Why This Package', whyPackageItems, fullWidth);
+    ensurePageSpace(whyHeight + 14);
+    drawBulletedCard(doc, 'Why This Package', whyPackageItems, margin, y, fullWidth, whyHeight);
+    y += whyHeight + 14;
 
-    y += drawLabelValue(doc, 'Company', company, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Niche', niche, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Contact', contactName, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Email', contactEmail, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Severity', severity, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Bottleneck', bottleneck, margin, y, contentWidth);
-
-    y += 6;
-    drawDivider(doc, pageWidth, margin, y);
-    y += 18;
-
-    ensurePageSpace(280);
-    drawSectionTitle(doc, 'Lead Details', margin, y);
-    y += 20;
-
-    y += drawLabelValue(doc, 'Lead Sources', leadSources, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Primary Problem', primaryProblem, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Problem Detail', problemDetail || '-', margin, y, contentWidth);
-    y += drawLabelValue(doc, 'CRM Used', crmUsed, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Booking Link', bookingLink, margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth);
-    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth);
-
-    y += 6;
-    drawDivider(doc, pageWidth, margin, y);
-    y += 18;
+    const opsHeight = getBulletedCardHeight(doc, 'Operational Signals', operationalSignalItems, fullWidth);
+    ensurePageSpace(opsHeight + 20);
+    drawBulletedCard(doc, 'Operational Signals', operationalSignalItems, margin, y, fullWidth, opsHeight);
+    y += opsHeight + 20;
 
     ensurePageSpace(240);
     drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
     y += 20;
 
-    const includedItems = recommended.includes.map((item) => `ï ${item}`);
+    const includedItems = recommended.includes.map((item) => `‚Ä¢ ${item}`);
     const stackItems = [
-      `ï ${proposedArchitecture}`,
-      'ï Airtable as ops backbone',
-      'ï Website as qualification layer',
-      'ï Direct backend ingest + activity logging',
+      `‚Ä¢ ${proposedArchitecture}`,
+      '‚Ä¢ Airtable as ops backbone',
+      '‚Ä¢ Website as qualification layer',
+      '‚Ä¢ Direct backend ingest + activity logging',
     ];
 
     const includedHeight = getBulletedCardHeight(doc, 'Included', includedItems, fullWidth);
@@ -573,7 +577,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     drawBulletedCard(doc, 'Proposed Architecture', stackItems, margin, y, fullWidth, stackHeight);
     y += stackHeight + 18;
 
-    const outItems = [...recommended.limits, ...recommended.excludes].map((item) => `ï ${item}`);
+    const outItems = [...recommended.limits, ...recommended.excludes].map((item) => `‚Ä¢ ${item}`);
     const outHeight = getBulletedCardHeight(doc, 'Out of Scope', outItems, contentWidth);
 
     ensurePageSpace(outHeight + 24);
@@ -604,11 +608,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         .map((line) => line.trim())
         .filter(Boolean);
 
-      const bulletLines = lines.filter((line) => line.startsWith('ï '));
+      const bulletLines = lines.filter((line) => line.startsWith('‚Ä¢ '));
       const isHeading =
         lines.length === 1 &&
-        /^[A-Z][A-Za-z0-9\s/&():ìî"'-]{1,80}$/.test(lines[0]) &&
-        !lines[0].startsWith('ï');
+        /^[A-Z][A-Za-z0-9\s/&():‚Äú‚Äù"'-]{1,80}$/.test(lines[0]) &&
+        !lines[0].startsWith('‚Ä¢');
 
       if (isHeading) {
         addWrappedTextBlock(lines[0], {
@@ -623,14 +627,14 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
       if (bulletLines.length === lines.length && bulletLines.length > 0) {
         bulletLines.forEach((line) => {
-          const normalized = line.replace(/^ï\s*/, '').trim() || '-';
+          const normalized = line.replace(/^‚Ä¢\s*/, '').trim() || '-';
           const bulletWrapped = doc.splitTextToSize(normalized, contentWidth - 14);
           ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 4));
 
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.setTextColor(16, 185, 129);
-          doc.text('ï', margin, y);
+          doc.text('‚Ä¢', margin, y);
 
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(51, 65, 85);
@@ -789,7 +793,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
               <div className="space-y-2">
                 {recommended.includes.map((item) => (
-                  <div key={item} className="text-sm text-slate-300">ï {item}</div>
+                  <div key={item} className="text-sm text-slate-300">‚Ä¢ {item}</div>
                 ))}
               </div>
             </div>
@@ -797,7 +801,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
               <div className="space-y-2">
                 {[...recommended.limits, ...recommended.excludes].map((item) => (
-                  <div key={item} className="text-sm text-slate-300">ï {item}</div>
+                  <div key={item} className="text-sm text-slate-300">‚Ä¢ {item}</div>
                 ))}
               </div>
             </div>
