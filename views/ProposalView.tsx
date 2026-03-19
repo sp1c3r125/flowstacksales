@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
@@ -112,51 +113,158 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [deployLogs]);
 
-  const handleExportBrief = () => {
-    const exportContent = [
-      `# Flowstack Proposal`,
-      ``,
-      `Generated: ${new Date().toISOString()}`,
-      ``,
-      `## Contact`,
-      `Name: ${appState.ingest.contactName}`,
-      `Business: ${appState.ingest.agencyName}`,
-      `Email: ${appState.ingest.contactEmail}`,
-      `Phone: ${appState.ingest.phone}`,
-      ``,
-      `## Business Context`,
-      `Niche: ${appState.ingest.niche}`,
-      `Lead Sources: ${appState.ingest.leadSources.join(', ')}`,
-      `Primary Problem: ${appState.ingest.primaryProblem}`,
-      `Problem Detail: ${appState.ingest.problemDetail || ''}`,
-      `CRM Used: ${appState.ingest.crmUsed || ''}`,
-      `Booking Link: ${appState.ingest.bookingLink || ''}`,
-      `Needs Booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
-      `Multiple Offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
-      `Needs Staff Routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
-      ``,
-      `## Metrics`,
-      `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
-      `Annual Leakage: ${formatCurrency(annualLeakage)}`,
-      ``,
-      `## Recommendation`,
-      `Package: ${leadCapture.recommendedPackage}`,
-      `Reason: ${leadCapture.qualificationReason}`,
-      ``,
-      `## Proposal`,
-      proposal,
-      ``,
-    ].join('\n');
+  const postLeadEvent = async (eventName: 'brief_exported' | 'sales_handoff_sent', details: string) => {
+    const payload = {
+      step: 'proposal',
+      timestamp: new Date().toISOString(),
+      calculator: appState.calculator,
+      ingest: appState.ingest,
+      calculatedMetrics: appState.calculatedMetrics,
+      proposalGenerated: true,
+      proposalMarkdown: proposal,
+      recommendedPackage: leadCapture.recommendedPackage,
+      qualificationReason: leadCapture.qualificationReason,
+      leadPayload: leadCapture.leadPayload,
+      airtableFields: leadCapture.airtableFields,
+      activityPayload: {
+        ...leadCapture.activityPayload,
+        event_name: eventName,
+        status: 'success',
+        details,
+      },
+      metadata: {
+        ...leadCapture.metadata,
+        event_name: eventName,
+      },
+    };
 
-    const blob = new Blob([exportContent], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `flowstack-proposal-${Date.now()}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const response = await fetch('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `${eventName} failed`);
+    }
+
+    return response.json().catch(() => null);
+  };
+
+  const downloadBriefPdf = () => {
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'pt',
+      format: 'a4',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const maxWidth = pageWidth - margin * 2;
+    const lineHeight = 16;
+
+    let y = margin;
+
+    const ensurePageSpace = (needed = lineHeight) => {
+      if (y + needed > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+    };
+
+    const addBlock = (text: string, fontSize = 11, extraGap = 8) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(fontSize);
+      const lines = doc.splitTextToSize(text, maxWidth);
+      lines.forEach((line: string) => {
+        ensurePageSpace();
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+      y += extraGap;
+    };
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Flowstack Proposal', margin, y);
+    y += 28;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toISOString()}`, margin, y);
+    y += 24;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Contact', margin, y);
+    y += 18;
+    addBlock(
+      [
+        `Name: ${appState.ingest.contactName}`,
+        `Business: ${appState.ingest.agencyName}`,
+        `Email: ${appState.ingest.contactEmail}`,
+        `Phone: ${appState.ingest.phone}`,
+      ].join('\n')
+    );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Business Context', margin, y);
+    y += 18;
+    addBlock(
+      [
+        `Niche: ${appState.ingest.niche}`,
+        `Lead Sources: ${appState.ingest.leadSources.join(', ')}`,
+        `Primary Problem: ${appState.ingest.primaryProblem}`,
+        `Problem Detail: ${appState.ingest.problemDetail || ''}`,
+        `CRM Used: ${appState.ingest.crmUsed || ''}`,
+        `Booking Link: ${appState.ingest.bookingLink || ''}`,
+        `Needs Booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
+        `Multiple Offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
+        `Needs Staff Routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
+      ].join('\n')
+    );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Metrics', margin, y);
+    y += 18;
+    addBlock(
+      [
+        `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
+        `Annual Leakage: ${formatCurrency(annualLeakage)}`,
+      ].join('\n')
+    );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Recommendation', margin, y);
+    y += 18;
+    addBlock(
+      [
+        `Package: ${leadCapture.recommendedPackage}`,
+        `Reason: ${leadCapture.qualificationReason}`,
+      ].join('\n')
+    );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Proposal', margin, y);
+    y += 18;
+    addBlock(proposal, 10, 4);
+
+    doc.save(`flowstack-proposal-${Date.now()}.pdf`);
+  };
+
+  const handleExportBrief = async () => {
+    try {
+      downloadBriefPdf();
+      await postLeadEvent('brief_exported', 'Client exported proposal brief as PDF');
+    } catch (error) {
+      console.error('Brief export failed:', error);
+    }
   };
 
   const handleDeploy = async () => {
@@ -166,48 +274,31 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
-      addLog('> INITIALIZING LEAD EXPORT...');
-      await delay(500);
+      addLog('> INITIALIZING SALES HANDOFF...');
+      await delay(400);
       addLog(`> PACKAGE: ${recommended.name.toUpperCase()}`);
-      await delay(300);
+      await delay(250);
       addLog(`> CONTACT: ${appState.ingest?.contactEmail || 'N/A'}`);
-      await delay(200);
-      addLog(`> INGEST EVENT: ${leadCapture.metadata.event_name}`);
-      await delay(300);
+      await delay(250);
+      addLog(`> EVENT: sales_handoff_sent`);
+      await delay(250);
       addLog(`> ANNUAL LEAKAGE: ${formatCurrency(annualLeakage)}`);
-      await delay(300);
-      addLog('> BUILDING SALES HANDOFF PACKET...');
-      await delay(500);
+      await delay(250);
+      addLog('> WRITING LEAD + ACTIVITY TO AIRTABLE...');
+      await delay(400);
 
-      const payload = {
-        step: 'proposal',
-        exportTrigger: 'manual',
-        timestamp: new Date().toISOString(),
-        calculator: appState.calculator,
-        ingest: appState.ingest,
-        calculatedMetrics: appState.calculatedMetrics,
-        proposalGenerated: true,
-        proposalMarkdown: proposal,
-        recommendedPackage: leadCapture.recommendedPackage,
-        leadPayload: leadCapture.leadPayload,
-        airtableFields: leadCapture.airtableFields,
-        activityPayload: leadCapture.activityPayload,
-        metadata: leadCapture.metadata,
-      };
+      await postLeadEvent(
+        'sales_handoff_sent',
+        `Internal sales handoff sent from proposal view. Recommended package: ${leadCapture.recommendedPackage}.`
+      );
 
-      const response = await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error('EXPORT FAILURE');
-      addLog('> 200 OK: LEAD CAPTURED');
-      addLog('> SALES HANDOFF READY');
-      await delay(300);
+      addLog('> 200 OK: SALES HANDOFF RECORDED');
+      addLog('> LEAD + ACTIVITY WRITTEN');
+      addLog('> INTERNAL EMAIL ATTEMPTED');
+      await delay(250);
       setDeployStatus('success');
     } catch (error) {
-      addLog('> ERROR: EXPORT FAILED');
+      addLog('> ERROR: SALES HANDOFF FAILED');
       console.error('Deployment Error:', error);
       setDeployStatus('idle');
     }
