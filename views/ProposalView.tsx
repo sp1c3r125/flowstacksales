@@ -152,6 +152,29 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
+  const drawVerticalGradient = (
+    doc: jsPDF,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    start: [number, number, number],
+    end: [number, number, number],
+    steps = 60
+  ) => {
+    for (let i = 0; i < steps; i++) {
+      const t = i / Math.max(steps - 1, 1);
+      const r = Math.round(start[0] + (end[0] - start[0]) * t);
+      const g = Math.round(start[1] + (end[1] - start[1]) * t);
+      const b = Math.round(start[2] + (end[2] - start[2]) * t);
+      const stripeY = y + (height / steps) * i;
+      const stripeH = height / steps + 0.75;
+
+      doc.setFillColor(r, g, b);
+      doc.rect(x, stripeY, width, stripeH, 'F');
+    }
+  };
+
   const drawSectionTitle = (doc: jsPDF, title: string, x: number, y: number) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
@@ -254,8 +277,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       y += extraGap;
     };
 
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 110, 'F');
+    drawVerticalGradient(doc, 0, 0, pageWidth, 120, [15, 23, 42], [16, 185, 129], 80);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
@@ -264,15 +286,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    doc.setTextColor(203, 213, 225);
+    doc.setTextColor(226, 232, 240);
     doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 72);
-    doc.text(`Business: ${appState.ingest.agencyName}`, margin, 90);
+    doc.text(`Business: ${appState.ingest.agencyName}`, margin, 92);
 
-    y = 135;
+    y = 145;
 
-    doc.setFillColor(236, 253, 245);
+    drawVerticalGradient(doc, margin, y, contentWidth, 98, [236, 253, 245], [209, 250, 229], 50);
     doc.setDrawColor(167, 243, 208);
-    doc.roundedRect(margin, y, contentWidth, 92, 12, 12, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 98, 12, 12, 'S');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -294,7 +316,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 160);
     doc.text(reasonLines, margin + 140, y + 72);
 
-    y += 115;
+    y += 120;
 
     const leftCardHeight = drawInfoCard(
       doc,
@@ -385,7 +407,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139);
-      doc.text(`Flowstack Proposal Brief`, margin, pageHeight - 14);
+      doc.text('Flowstack Proposal Brief', margin, pageHeight - 14);
       doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 45, pageHeight - 14);
     }
 
