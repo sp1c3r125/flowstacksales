@@ -27,6 +27,49 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const leadCapture = useMemo(() => buildLeadCapturePayload(appState), [appState]);
   const recommended = useMemo(() => serviceCatalog[leadCapture.packageKey], [leadCapture.packageKey]);
 
+  const company = appState.ingest.agencyName || 'Lead';
+  const niche = appState.ingest.niche || 'Unknown';
+  const contactEmail = appState.ingest.contactEmail || 'Unknown';
+  const contactName = appState.ingest.contactName || 'Unknown';
+  const leadSources = appState.ingest.leadSources?.join(', ') || 'Unknown';
+  const primaryProblem = appState.ingest.primaryProblem || 'Unknown';
+  const problemDetail = appState.ingest.problemDetail || '';
+  const crmUsed = appState.ingest.crmUsed || 'Not specified';
+  const bookingLink = appState.ingest.bookingLink || 'Not provided';
+
+  const severity = useMemo(() => {
+    if (annualLeakage >= 1_000_000 || monthlyLeakage >= 100_000) return 'Critical';
+    if (annualLeakage >= 300_000 || monthlyLeakage >= 30_000) return 'High';
+    if (annualLeakage >= 120_000 || monthlyLeakage >= 10_000) return 'Medium';
+    return 'Low';
+  }, [annualLeakage, monthlyLeakage]);
+
+  const bottleneck = useMemo(() => {
+    if (primaryProblem && primaryProblem !== 'Other') return primaryProblem;
+    if (problemDetail.trim()) return problemDetail.trim();
+    return 'Lead handling inefficiency';
+  }, [primaryProblem, problemDetail]);
+
+  const proposedArchitecture = useMemo(() => {
+    const parts: string[] = ['Website intake capture', 'Airtable ops tracking'];
+
+    if (appState.ingest.needsBooking) parts.push('booking automation');
+    if (appState.ingest.needsStaffRouting) parts.push('staff routing');
+    if (appState.ingest.multipleOffers) parts.push('offer-based qualification');
+    if ((appState.ingest.messagesPerDay || 0) >= 10) parts.push('high-volume inquiry triage');
+    if (appState.ingest.leadSources.length >= 2) parts.push('multi-channel intake normalization');
+    if (crmUsed && crmUsed !== 'Not specified') parts.push(`CRM sync (${crmUsed})`);
+
+    return parts.join(' + ');
+  }, [appState.ingest, crmUsed]);
+
+  const exportFileName = useMemo(() => {
+    const safeCompany = company.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Lead';
+    const safeNiche = niche.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Unknown';
+    const date = new Date().toISOString().slice(0, 10);
+    return `FlowStackOS Intake Report — ${safeCompany} (${safeNiche}) — ${date}.pdf`;
+  }, [company, niche]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -160,7 +203,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     height: number,
     start: [number, number, number],
     end: [number, number, number],
-    steps = 60
+    steps = 72
   ) => {
     for (let i = 0; i < steps; i++) {
       const t = i / Math.max(steps - 1, 1);
@@ -168,7 +211,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       const g = Math.round(start[1] + (end[1] - start[1]) * t);
       const b = Math.round(start[2] + (end[2] - start[2]) * t);
       const stripeY = y + (height / steps) * i;
-      const stripeH = height / steps + 0.75;
+      const stripeH = height / steps + 0.8;
 
       doc.setFillColor(r, g, b);
       doc.rect(x, stripeY, width, stripeH, 'F');
@@ -198,8 +241,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
     const lines = doc.splitTextToSize(value || '-', maxWidth);
-    doc.text(lines, x + 85, y);
-    return Math.max(16, lines.length * 14);
+    doc.text(lines, x + 92, y);
+
+    return Math.max(18, lines.length * 14);
   };
 
   const drawInfoCard = (
@@ -213,7 +257,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const lineHeight = 14;
     const padding = 14;
     const bodyHeight = body.length * lineHeight;
-    const height = 26 + bodyHeight + padding;
+    const height = 28 + bodyHeight + padding;
 
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
@@ -228,13 +272,18 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setFontSize(10);
     doc.setTextColor(51, 65, 85);
 
-    let cursorY = y + 36;
+    let cursorY = y + 38;
     body.forEach((line) => {
       doc.text(line || '-', x + padding, cursorY);
       cursorY += lineHeight;
     });
 
     return height;
+  };
+
+  const drawDivider = (doc: jsPDF, pageWidth: number, margin: number, y: number) => {
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, y, pageWidth - margin, y);
   };
 
   const downloadBriefPdf = () => {
@@ -277,24 +326,25 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       y += extraGap;
     };
 
-    drawVerticalGradient(doc, 0, 0, pageWidth, 120, [15, 23, 42], [16, 185, 129], 80);
+    drawVerticalGradient(doc, 0, 0, pageWidth, 130, [15, 23, 42], [16, 185, 129], 88);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
     doc.setTextColor(255, 255, 255);
-    doc.text('Flowstack Proposal Brief', margin, 48);
+    doc.text('FlowStackOS Intake Report', margin, 46);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(226, 232, 240);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 72);
-    doc.text(`Business: ${appState.ingest.agencyName}`, margin, 92);
+    doc.text(`Company: ${company}`, margin, 70);
+    doc.text(`Niche: ${niche}`, margin, 88);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 106);
 
-    y = 145;
+    y = 150;
 
-    drawVerticalGradient(doc, margin, y, contentWidth, 98, [236, 253, 245], [209, 250, 229], 50);
+    drawVerticalGradient(doc, margin, y, contentWidth, 108, [236, 253, 245], [209, 250, 229], 56);
     doc.setDrawColor(167, 243, 208);
-    doc.roundedRect(margin, y, contentWidth, 98, 12, 12, 'S');
+    doc.roundedRect(margin, y, contentWidth, 108, 12, 12, 'S');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -309,31 +359,43 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
-    doc.text('Qualification Reason', margin + 18, y + 72);
+    doc.text('Severity', margin + 18, y + 74);
+    doc.text('Bottleneck', margin + 150, y + 74);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 160);
-    doc.text(reasonLines, margin + 140, y + 72);
+    doc.text(severity, margin + 72, y + 74);
+    const bottleneckLines = doc.splitTextToSize(bottleneck, contentWidth - 250);
+    doc.text(bottleneckLines, margin + 214, y + 74);
 
-    y += 120;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Qualification Reason', margin + 18, y + 96);
 
-    const leftCardHeight = drawInfoCard(
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 156);
+    doc.text(reasonLines, margin + 140, y + 96);
+
+    y += 128;
+
+    const leakageCardHeight = drawInfoCard(
       doc,
-      'Revenue Leakage',
+      'Revenue at Risk',
       [
-        `Monthly: ${formatCurrency(monthlyLeakage)}`,
-        `Annual: ${formatCurrency(annualLeakage)}`,
+        `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
+        `Annual Leakage: ${formatCurrency(annualLeakage)}`,
       ],
       margin,
       y,
       (contentWidth - 12) / 2
     );
 
-    const rightCardHeight = drawInfoCard(
+    const recommendationCardHeight = drawInfoCard(
       doc,
-      'Package Pricing',
+      'Recommendation',
       [
+        `Tier: ${recommended.name}`,
         `Setup: ${recommended.setup}`,
         `Monthly: ${recommended.monthly}`,
         recommended.altPricing || '',
@@ -343,35 +405,40 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       (contentWidth - 12) / 2
     );
 
-    y += Math.max(leftCardHeight, rightCardHeight) + 24;
+    y += Math.max(leakageCardHeight, recommendationCardHeight) + 24;
 
-    ensurePageSpace(140);
-    drawSectionTitle(doc, 'Contact', margin, y);
+    ensurePageSpace(200);
+    drawSectionTitle(doc, 'Executive Summary', margin, y);
     y += 20;
 
-    y += drawLabelValue(doc, 'Name', appState.ingest.contactName, margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Business', appState.ingest.agencyName, margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Email', appState.ingest.contactEmail, margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Phone', appState.ingest.phone || '-', margin, y, contentWidth - 90);
-    y += 8;
+    y += drawLabelValue(doc, 'Company', company, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Niche', niche, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Contact', contactName, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Email', contactEmail, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Severity', severity, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Bottleneck', bottleneck, margin, y, contentWidth - 100);
+    y += 6;
+    drawDivider(doc, pageWidth, margin, y);
+    y += 18;
 
-    ensurePageSpace(220);
-    drawSectionTitle(doc, 'Business Context', margin, y);
+    ensurePageSpace(240);
+    drawSectionTitle(doc, 'Lead Details', margin, y);
     y += 20;
 
-    y += drawLabelValue(doc, 'Niche', appState.ingest.niche || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Lead Sources', appState.ingest.leadSources.join(', ') || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Primary Problem', appState.ingest.primaryProblem || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Problem Detail', appState.ingest.problemDetail || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'CRM Used', appState.ingest.crmUsed || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Booking Link', appState.ingest.bookingLink || '-', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth - 90);
-    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth - 90);
-    y += 8;
+    y += drawLabelValue(doc, 'Lead Sources', leadSources, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Primary Problem', primaryProblem, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Problem Detail', problemDetail || '-', margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'CRM Used', crmUsed, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Booking Link', bookingLink, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth - 100);
+    y += 6;
+    drawDivider(doc, pageWidth, margin, y);
+    y += 18;
 
-    ensurePageSpace(220);
-    drawSectionTitle(doc, 'Included vs Out of Scope', margin, y);
+    ensurePageSpace(180);
+    drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
     y += 20;
 
     const includedHeight = drawInfoCard(
@@ -383,16 +450,47 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       (contentWidth - 12) / 2
     );
 
-    const outHeight = drawInfoCard(
+    const stackHeight = drawInfoCard(
       doc,
-      'Out of Scope',
-      [...recommended.limits, ...recommended.excludes].map(item => `• ${item}`),
+      'Proposed Architecture',
+      [
+        `• ${proposedArchitecture}`,
+        `• Airtable as ops backbone`,
+        `• Website as qualification layer`,
+        `• Direct backend ingest + activity logging`,
+      ],
       margin + (contentWidth - 12) / 2 + 12,
       y,
       (contentWidth - 12) / 2
     );
 
-    y += Math.max(includedHeight, outHeight) + 24;
+    y += Math.max(includedHeight, stackHeight) + 18;
+
+    const outHeight = drawInfoCard(
+      doc,
+      'Out of Scope',
+      [...recommended.limits, ...recommended.excludes].map(item => `• ${item}`),
+      margin,
+      y,
+      contentWidth
+    );
+
+    y += outHeight + 24;
+
+    ensurePageSpace(120);
+    drawSectionTitle(doc, 'Next Steps', margin, y);
+    y += 20;
+    addWrappedText(
+      [
+        '1. Review the recommended package and confirm fit.',
+        '2. Finalize the intake-to-ops workflow and required integrations.',
+        '3. Configure implementation scope, access, and deployment sequence.',
+        '4. Launch the intake automation, routing, and reporting loop.',
+      ].join('\n'),
+      10,
+      [51, 65, 85],
+      14
+    );
 
     ensurePageSpace(120);
     drawSectionTitle(doc, 'Proposal Narrative', margin, y);
@@ -407,11 +505,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139);
-      doc.text('Flowstack Proposal Brief', margin, pageHeight - 14);
+      doc.text('FlowStackOS Intake Report', margin, pageHeight - 14);
       doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 45, pageHeight - 14);
     }
 
-    doc.save(`flowstack-proposal-${Date.now()}.pdf`);
+    doc.save(exportFileName);
   };
 
   const handleExportBrief = async () => {
@@ -492,16 +590,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-mono uppercase mb-2">Best for</div>
-              <div className="space-y-2">
-                {recommended.bestFor.map(item => (
-                  <div key={item} className="text-sm text-slate-300">• {item}</div>
-                ))}
-              </div>
-              <div className="pt-3 border-t border-slate-800">
-                <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
-                <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
-              </div>
+              <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
+              <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
             </div>
           </div>
         </BentoCard>
