@@ -59,6 +59,31 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
         setProposal(text);
         setLoading(false);
+
+        try {
+          await fetch('/api/lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              step: 'proposal',
+              exportTrigger: 'auto',
+              timestamp: new Date().toISOString(),
+              calculator: appState.calculator,
+              ingest: appState.ingest,
+              calculatedMetrics: appState.calculatedMetrics,
+              proposalGenerated: true,
+              proposalMarkdown: text,
+              recommendedPackage: leadCapture.recommendedPackage,
+              qualificationReason: leadCapture.qualificationReason,
+              leadPayload: leadCapture.leadPayload,
+              airtableFields: leadCapture.airtableFields,
+              activityPayload: leadCapture.activityPayload,
+              metadata: leadCapture.metadata,
+            }),
+          });
+        } catch (err) {
+          console.error('Auto-export to /api/lead failed:', err);
+        }
       } catch (e: any) {
         if (!isMounted) return;
         setProposal(`SYSTEM FAULT: ${e?.message || 'Unknown AI Diagnostic Error'}`);
@@ -70,7 +95,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return () => {
       isMounted = false;
     };
-  }, [appState, leadCapture.recommendedPackage]);
+  }, [appState, leadCapture]);
 
   useEffect(() => {
     if (!loading && proposal) {
