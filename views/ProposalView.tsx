@@ -52,14 +52,12 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
   const proposedArchitecture = useMemo(() => {
     const parts: string[] = ['Website intake capture', 'Airtable ops tracking'];
-
     if (appState.ingest.needsBooking) parts.push('booking automation');
     if (appState.ingest.needsStaffRouting) parts.push('staff routing');
     if (appState.ingest.multipleOffers) parts.push('offer-based qualification');
     if ((appState.ingest.messagesPerDay || 0) >= 10) parts.push('high-volume inquiry triage');
     if (appState.ingest.leadSources.length >= 2) parts.push('multi-channel intake normalization');
     if (crmUsed && crmUsed !== 'Not specified') parts.push(`CRM sync (${crmUsed})`);
-
     return parts.join(' + ');
   }, [appState.ingest, crmUsed]);
 
@@ -195,6 +193,19 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
+  const stripMarkdown = (text: string) => {
+    return (text || '')
+      .replace(/^#{1,6}\s*/gm, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^\s*[-*+]\s+/gm, '• ')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const drawVerticalGradient = (
     doc: jsPDF,
     x: number,
@@ -212,7 +223,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       const b = Math.round(start[2] + (end[2] - start[2]) * t);
       const stripeY = y + (height / steps) * i;
       const stripeH = height / steps + 0.8;
-
       doc.setFillColor(r, g, b);
       doc.rect(x, stripeY, width, stripeH, 'F');
     }
@@ -233,6 +243,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     y: number,
     maxWidth: number
   ) => {
+    const labelWidth = 110;
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
@@ -240,24 +252,32 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    const lines = doc.splitTextToSize(value || '-', maxWidth);
-    doc.text(lines, x + 92, y);
+    const lines = doc.splitTextToSize(value || '-', maxWidth - labelWidth);
+    doc.text(lines, x + labelWidth, y);
 
-    return Math.max(18, lines.length * 14);
+    return Math.max(20, lines.length * 14 + 4);
   };
 
-  const drawInfoCard = (
+  const drawBulletedCard = (
     doc: jsPDF,
     title: string,
-    body: string[],
+    items: string[],
     x: number,
     y: number,
     width: number
   ) => {
-    const lineHeight = 14;
     const padding = 14;
-    const bodyHeight = body.length * lineHeight;
-    const height = 28 + bodyHeight + padding;
+    const titleHeight = 18;
+    const lineHeight = 14;
+    const bodyWidth = width - padding * 2;
+
+    const wrappedLines: string[] = [];
+    items.forEach((item) => {
+      const lines = doc.splitTextToSize(item || '-', bodyWidth);
+      wrappedLines.push(...lines);
+    });
+
+    const height = padding + titleHeight + 10 + wrappedLines.length * lineHeight + padding;
 
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
@@ -272,9 +292,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setFontSize(10);
     doc.setTextColor(51, 65, 85);
 
-    let cursorY = y + 38;
-    body.forEach((line) => {
-      doc.text(line || '-', x + padding, cursorY);
+    let cursorY = y + padding + titleHeight + 10;
+    wrappedLines.forEach((line) => {
+      doc.text(line, x + padding, cursorY);
       cursorY += lineHeight;
     });
 
@@ -298,6 +318,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const margin = 40;
     const contentWidth = pageWidth - margin * 2;
     const lineHeight = 16;
+    const cleanProposal = stripMarkdown(proposal);
 
     let y = margin;
 
@@ -342,9 +363,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y = 150;
 
-    drawVerticalGradient(doc, margin, y, contentWidth, 108, [236, 253, 245], [209, 250, 229], 56);
+    drawVerticalGradient(doc, margin, y, contentWidth, 126, [236, 253, 245], [209, 250, 229], 56);
     doc.setDrawColor(167, 243, 208);
-    doc.roundedRect(margin, y, contentWidth, 108, 12, 12, 'S');
+    doc.roundedRect(margin, y, contentWidth, 126, 12, 12, 'S');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -354,32 +375,33 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(6, 78, 59);
-    doc.text(recommended.tagline, margin + 18, y + 50);
+    const taglineLines = doc.splitTextToSize(recommended.tagline, contentWidth - 36);
+    doc.text(taglineLines, margin + 18, y + 50);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
-    doc.text('Severity', margin + 18, y + 74);
-    doc.text('Bottleneck', margin + 150, y + 74);
+    doc.text('Severity', margin + 18, y + 82);
+    doc.text('Bottleneck', margin + 150, y + 82);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text(severity, margin + 72, y + 74);
+    doc.text(severity, margin + 72, y + 82);
     const bottleneckLines = doc.splitTextToSize(bottleneck, contentWidth - 250);
-    doc.text(bottleneckLines, margin + 214, y + 74);
+    doc.text(bottleneckLines, margin + 214, y + 82);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(71, 85, 105);
-    doc.text('Qualification Reason', margin + 18, y + 96);
+    doc.text('Qualification Reason', margin + 18, y + 104);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
     const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 156);
-    doc.text(reasonLines, margin + 140, y + 96);
+    doc.text(reasonLines, margin + 140, y + 104);
 
-    y += 128;
+    y += 146;
 
-    const leakageCardHeight = drawInfoCard(
+    const leftHeight = drawBulletedCard(
       doc,
       'Revenue at Risk',
       [
@@ -391,57 +413,59 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       (contentWidth - 12) / 2
     );
 
-    const recommendationCardHeight = drawInfoCard(
+    const rightHeight = drawBulletedCard(
       doc,
       'Recommendation',
       [
         `Tier: ${recommended.name}`,
         `Setup: ${recommended.setup}`,
         `Monthly: ${recommended.monthly}`,
-        recommended.altPricing || '',
-      ].filter(Boolean),
+        ...(recommended.altPricing ? [recommended.altPricing] : []),
+      ],
       margin + (contentWidth - 12) / 2 + 12,
       y,
       (contentWidth - 12) / 2
     );
 
-    y += Math.max(leakageCardHeight, recommendationCardHeight) + 24;
+    y += Math.max(leftHeight, rightHeight) + 24;
 
-    ensurePageSpace(200);
+    ensurePageSpace(220);
     drawSectionTitle(doc, 'Executive Summary', margin, y);
     y += 20;
 
-    y += drawLabelValue(doc, 'Company', company, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Niche', niche, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Contact', contactName, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Email', contactEmail, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Severity', severity, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Bottleneck', bottleneck, margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Company', company, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Niche', niche, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Contact', contactName, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Email', contactEmail, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Severity', severity, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Bottleneck', bottleneck, margin, y, contentWidth);
+
     y += 6;
     drawDivider(doc, pageWidth, margin, y);
     y += 18;
 
-    ensurePageSpace(240);
+    ensurePageSpace(280);
     drawSectionTitle(doc, 'Lead Details', margin, y);
     y += 20;
 
-    y += drawLabelValue(doc, 'Lead Sources', leadSources, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Primary Problem', primaryProblem, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Problem Detail', problemDetail || '-', margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'CRM Used', crmUsed, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Booking Link', bookingLink, margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth - 100);
-    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth - 100);
+    y += drawLabelValue(doc, 'Lead Sources', leadSources, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Primary Problem', primaryProblem, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Problem Detail', problemDetail || '-', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'CRM Used', crmUsed, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Booking Link', bookingLink, margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth);
+    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth);
+
     y += 6;
     drawDivider(doc, pageWidth, margin, y);
     y += 18;
 
-    ensurePageSpace(180);
+    ensurePageSpace(220);
     drawSectionTitle(doc, 'Package & Tech Stack', margin, y);
     y += 20;
 
-    const includedHeight = drawInfoCard(
+    const includedHeight = drawBulletedCard(
       doc,
       'Included',
       recommended.includes.map(item => `• ${item}`),
@@ -450,7 +474,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       (contentWidth - 12) / 2
     );
 
-    const stackHeight = drawInfoCard(
+    const stackHeight = drawBulletedCard(
       doc,
       'Proposed Architecture',
       [
@@ -466,7 +490,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y += Math.max(includedHeight, stackHeight) + 18;
 
-    const outHeight = drawInfoCard(
+    const outHeight = drawBulletedCard(
       doc,
       'Out of Scope',
       [...recommended.limits, ...recommended.excludes].map(item => `• ${item}`),
@@ -477,7 +501,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
     y += outHeight + 24;
 
-    ensurePageSpace(120);
+    ensurePageSpace(140);
     drawSectionTitle(doc, 'Next Steps', margin, y);
     y += 20;
     addWrappedText(
@@ -492,10 +516,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       14
     );
 
-    ensurePageSpace(120);
+    ensurePageSpace(140);
     drawSectionTitle(doc, 'Proposal Narrative', margin, y);
     y += 20;
-    addWrappedText(proposal || '-', 10, [51, 65, 85], 10);
+    addWrappedText(cleanProposal || '-', 10, [51, 65, 85], 10);
 
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
