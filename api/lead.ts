@@ -70,10 +70,7 @@ function normalizeLeadPayload(body: any) {
     email: body?.email || body?.ingest?.contactEmail || "",
     phone: body?.phone || body?.ingest?.phone || "",
     company: body?.company || body?.ingest?.agencyName || "",
-    source:
-      body?.source ||
-      (Array.isArray(body?.leadSources) ? body.leadSources.join(", ") : "") ||
-      "Website",
+    source: body?.source || (Array.isArray(body?.leadSources) ? body.leadSources.join(", ") : "") || "Website",
     lead_sources: body?.lead_sources || body?.leadSources || body?.ingest?.leadSources || [],
     niche: body?.niche || body?.ingest?.niche || "",
     service_need: body?.service_need || body?.primaryProblem || body?.ingest?.primaryProblem || "",
@@ -87,8 +84,7 @@ function normalizeLeadPayload(body: any) {
     messages_per_day: body?.messages_per_day || body?.messagesPerDay || body?.ingest?.messagesPerDay || 0,
     needs_booking: body?.needs_booking ?? body?.needsBooking ?? body?.ingest?.needsBooking ?? false,
     multiple_offers: body?.multiple_offers ?? body?.multipleOffers ?? body?.ingest?.multipleOffers ?? false,
-    needs_staff_routing:
-      body?.needs_staff_routing ?? body?.needsStaffRouting ?? body?.ingest?.needsStaffRouting ?? false,
+    needs_staff_routing: body?.needs_staff_routing ?? body?.needsStaffRouting ?? body?.ingest?.needsStaffRouting ?? false,
     owner: body?.owner || "",
     next_action: body?.next_action || "Review new inbound lead",
     notes: body?.notes || "",
