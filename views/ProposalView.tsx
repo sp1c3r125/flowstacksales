@@ -152,6 +152,68 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
+  const drawSectionTitle = (doc: jsPDF, title: string, x: number, y: number) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(16, 185, 129);
+    doc.text(title.toUpperCase(), x, y);
+  };
+
+  const drawLabelValue = (
+    doc: jsPDF,
+    label: string,
+    value: string,
+    x: number,
+    y: number,
+    maxWidth: number
+  ) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`${label}:`, x, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const lines = doc.splitTextToSize(value || '-', maxWidth);
+    doc.text(lines, x + 85, y);
+    return Math.max(16, lines.length * 14);
+  };
+
+  const drawInfoCard = (
+    doc: jsPDF,
+    title: string,
+    body: string[],
+    x: number,
+    y: number,
+    width: number
+  ) => {
+    const lineHeight = 14;
+    const padding = 14;
+    const bodyHeight = body.length * lineHeight;
+    const height = 26 + bodyHeight + padding;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(x, y, width, height, 8, 8, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title, x + padding, y + 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(51, 65, 85);
+
+    let cursorY = y + 36;
+    body.forEach((line) => {
+      doc.text(line || '-', x + padding, cursorY);
+      cursorY += lineHeight;
+    });
+
+    return height;
+  };
+
   const downloadBriefPdf = () => {
     const doc = new jsPDF({
       orientation: 'p',
@@ -162,7 +224,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 40;
-    const maxWidth = pageWidth - margin * 2;
+    const contentWidth = pageWidth - margin * 2;
     const lineHeight = 16;
 
     let y = margin;
@@ -174,10 +236,16 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       }
     };
 
-    const addBlock = (text: string, fontSize = 11, extraGap = 8) => {
+    const addWrappedText = (
+      text: string,
+      fontSize = 10,
+      color: [number, number, number] = [51, 65, 85],
+      extraGap = 8
+    ) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(fontSize);
-      const lines = doc.splitTextToSize(text, maxWidth);
+      doc.setTextColor(color[0], color[1], color[2]);
+      const lines = doc.splitTextToSize(text || '-', contentWidth);
       lines.forEach((line: string) => {
         ensurePageSpace();
         doc.text(line, margin, y);
@@ -186,74 +254,140 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       y += extraGap;
     };
 
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 110, 'F');
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Flowstack Proposal', margin, y);
-    y += 28;
+    doc.setFontSize(24);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Flowstack Proposal Brief', margin, 48);
 
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(203, 213, 225);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 72);
+    doc.text(`Business: ${appState.ingest.agencyName}`, margin, 90);
+
+    y = 135;
+
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(167, 243, 208);
+    doc.roundedRect(margin, y, contentWidth, 92, 12, 12, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(6, 95, 70);
+    doc.text(recommended.name, margin + 18, y + 30);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(6, 78, 59);
+    doc.text(recommended.tagline, margin + 18, y + 50);
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toISOString()}`, margin, y);
-    y += 24;
+    doc.setTextColor(71, 85, 105);
+    doc.text('Qualification Reason', margin + 18, y + 72);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('Contact', margin, y);
-    y += 18;
-    addBlock(
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const reasonLines = doc.splitTextToSize(leadCapture.qualificationReason || '-', contentWidth - 160);
+    doc.text(reasonLines, margin + 140, y + 72);
+
+    y += 115;
+
+    const leftCardHeight = drawInfoCard(
+      doc,
+      'Revenue Leakage',
       [
-        `Name: ${appState.ingest.contactName}`,
-        `Business: ${appState.ingest.agencyName}`,
-        `Email: ${appState.ingest.contactEmail}`,
-        `Phone: ${appState.ingest.phone}`,
-      ].join('\n')
+        `Monthly: ${formatCurrency(monthlyLeakage)}`,
+        `Annual: ${formatCurrency(annualLeakage)}`,
+      ],
+      margin,
+      y,
+      (contentWidth - 12) / 2
     );
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('Business Context', margin, y);
-    y += 18;
-    addBlock(
+    const rightCardHeight = drawInfoCard(
+      doc,
+      'Package Pricing',
       [
-        `Niche: ${appState.ingest.niche}`,
-        `Lead Sources: ${appState.ingest.leadSources.join(', ')}`,
-        `Primary Problem: ${appState.ingest.primaryProblem}`,
-        `Problem Detail: ${appState.ingest.problemDetail || ''}`,
-        `CRM Used: ${appState.ingest.crmUsed || ''}`,
-        `Booking Link: ${appState.ingest.bookingLink || ''}`,
-        `Needs Booking: ${appState.ingest.needsBooking ? 'Yes' : 'No'}`,
-        `Multiple Offers: ${appState.ingest.multipleOffers ? 'Yes' : 'No'}`,
-        `Needs Staff Routing: ${appState.ingest.needsStaffRouting ? 'Yes' : 'No'}`,
-      ].join('\n')
+        `Setup: ${recommended.setup}`,
+        `Monthly: ${recommended.monthly}`,
+        recommended.altPricing || '',
+      ].filter(Boolean),
+      margin + (contentWidth - 12) / 2 + 12,
+      y,
+      (contentWidth - 12) / 2
     );
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('Metrics', margin, y);
-    y += 18;
-    addBlock(
-      [
-        `Monthly Leakage: ${formatCurrency(monthlyLeakage)}`,
-        `Annual Leakage: ${formatCurrency(annualLeakage)}`,
-      ].join('\n')
+    y += Math.max(leftCardHeight, rightCardHeight) + 24;
+
+    ensurePageSpace(140);
+    drawSectionTitle(doc, 'Contact', margin, y);
+    y += 20;
+
+    y += drawLabelValue(doc, 'Name', appState.ingest.contactName, margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Business', appState.ingest.agencyName, margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Email', appState.ingest.contactEmail, margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Phone', appState.ingest.phone || '-', margin, y, contentWidth - 90);
+    y += 8;
+
+    ensurePageSpace(220);
+    drawSectionTitle(doc, 'Business Context', margin, y);
+    y += 20;
+
+    y += drawLabelValue(doc, 'Niche', appState.ingest.niche || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Lead Sources', appState.ingest.leadSources.join(', ') || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Primary Problem', appState.ingest.primaryProblem || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Problem Detail', appState.ingest.problemDetail || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'CRM Used', appState.ingest.crmUsed || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Booking Link', appState.ingest.bookingLink || '-', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Needs Booking', appState.ingest.needsBooking ? 'Yes' : 'No', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Multiple Offers', appState.ingest.multipleOffers ? 'Yes' : 'No', margin, y, contentWidth - 90);
+    y += drawLabelValue(doc, 'Needs Staff Routing', appState.ingest.needsStaffRouting ? 'Yes' : 'No', margin, y, contentWidth - 90);
+    y += 8;
+
+    ensurePageSpace(220);
+    drawSectionTitle(doc, 'Included vs Out of Scope', margin, y);
+    y += 20;
+
+    const includedHeight = drawInfoCard(
+      doc,
+      'Included',
+      recommended.includes.map(item => `• ${item}`),
+      margin,
+      y,
+      (contentWidth - 12) / 2
     );
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('Recommendation', margin, y);
-    y += 18;
-    addBlock(
-      [
-        `Package: ${leadCapture.recommendedPackage}`,
-        `Reason: ${leadCapture.qualificationReason}`,
-      ].join('\n')
+    const outHeight = drawInfoCard(
+      doc,
+      'Out of Scope',
+      [...recommended.limits, ...recommended.excludes].map(item => `• ${item}`),
+      margin + (contentWidth - 12) / 2 + 12,
+      y,
+      (contentWidth - 12) / 2
     );
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('Proposal', margin, y);
-    y += 18;
-    addBlock(proposal, 10, 4);
+    y += Math.max(includedHeight, outHeight) + 24;
+
+    ensurePageSpace(120);
+    drawSectionTitle(doc, 'Proposal Narrative', margin, y);
+    y += 20;
+    addWrappedText(proposal || '-', 10, [51, 65, 85], 10);
+
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Flowstack Proposal Brief`, margin, pageHeight - 14);
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 45, pageHeight - 14);
+    }
 
     doc.save(`flowstack-proposal-${Date.now()}.pdf`);
   };
