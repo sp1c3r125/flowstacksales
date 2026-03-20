@@ -834,7 +834,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
               <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
             </div>
-          </NeonPanel>
+          </div>
         </BentoCard>
 
         <BentoCard
@@ -894,7 +894,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 })}
               </article>
             )}
-          </div>
+          </NeonPanel>
         </BentoCard>
 
         <BentoCard className="col-span-12" title="What is included vs not included">
