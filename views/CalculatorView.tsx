@@ -65,23 +65,23 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
           <RangeControl label="Current close or booking rate" value={localData.rate} onChange={(val) => handleChange('rate', val)} min={0} max={60} step={1} suffix="%" error={errors.rate} />
         </BentoCard>
 
-        <BentoCard title="Revenue opportunity" className="col-span-12 md:col-span-7 bg-slate-900/80" accent="blue">
+        <BentoCard title="Revenue opportunity" className="col-span-12 md:col-span-7" accent="blue">
           <div className="grid grid-cols-2 gap-4 h-full content-center">
-            <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 relative overflow-hidden group">
+            <div className="relative overflow-hidden rounded-xl border border-blue-300/18 bg-[#071224]/78 p-4 shadow-[0_0_0_1px_rgba(96,165,250,0.05),0_0_18px_rgba(37,99,235,0.08)] group">
               <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors"><Activity size={16} /></div>
               <div className="text-sm text-slate-400 font-bold font-mono mb-1">Annual revenue opportunity</div>
               <div className="text-xl font-bold text-slate-200">{formatCurrency((localData.volume * localData.value) * 12)}</div>
               <div className="text-xs text-slate-500 mt-2 font-mono">If your funnel was healthy</div>
             </div>
 
-            <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 relative overflow-hidden group">
+            <div className="relative overflow-hidden rounded-xl border border-blue-300/18 bg-[#071224]/78 p-4 shadow-[0_0_0_1px_rgba(96,165,250,0.05),0_0_18px_rgba(37,99,235,0.08)] group">
               <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors"><Layers size={16} /></div>
               <div className="text-sm text-slate-400 font-bold font-mono mb-1">Leakage factor</div>
               <div className="text-xl font-bold text-slate-200">{100 - localData.rate}%</div>
               <div className="text-xs text-slate-500 mt-2 font-mono">Uncaptured value</div>
             </div>
 
-            <div className="col-span-2 p-6 rounded-lg bg-slate-950/50 border border-slate-800/50 relative overflow-hidden group mt-2">
+            <div className="relative col-span-2 mt-2 overflow-hidden rounded-xl border border-blue-300/18 bg-[#071224]/74 p-6 shadow-[0_0_0_1px_rgba(96,165,250,0.05),0_0_18px_rgba(37,99,235,0.08)] group">
               <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
               <div className="absolute top-4 right-4 text-red-500 animate-pulse-slow"><TrendingDown size={24} /></div>
               <div className="relative z-10">
@@ -117,7 +117,7 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left border-b border-slate-800">
+                <tr className="text-left border-b border-blue-300/12">
                   <th className="py-3 text-slate-500 font-mono uppercase text-xs">Category</th>
                   {packageOrder.map((key) => <th key={key} className="py-3 px-2 text-white">{serviceCatalog[key].name}</th>)}
                 </tr>
@@ -137,7 +137,7 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
         <BentoCard title="Proof by use case" className="col-span-12 md:col-span-7" accent="blue">
           <div className="grid md:grid-cols-3 gap-4">
             {proofExamples.map((item) => (
-              <div key={item.niche} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-2">
+              <div key={item.niche} className="rounded-xl border border-blue-300/16 bg-[#071224]/72 p-4 space-y-2 shadow-[0_0_0_1px_rgba(96,165,250,0.04)]">
                 <div className="text-xs font-mono uppercase text-blue-300">{item.niche}</div>
                 <div className="text-white font-semibold">{item.result}</div>
                 <div className="text-sm text-slate-400">{item.details}</div>
@@ -164,7 +164,7 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
         <BentoCard title="What to prepare before setup" className="col-span-12" accent="green">
           <div className="grid md:grid-cols-5 gap-3">
             {onboardingChecklist.map((item) => (
-              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300 flex gap-2 items-start">
+              <div key={item} className="flex items-start gap-2 rounded-xl border border-blue-300/16 bg-[#071224]/72 p-4 text-sm text-slate-300 shadow-[0_0_0_1px_rgba(96,165,250,0.04)]">
                 <ShieldCheck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                 <span>{item}</span>
               </div>
