@@ -57,7 +57,8 @@ const PRIMARY_PROBLEM_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ];
 
-const DRAFT_KEY = 'flowstack_ingest_identity_draft_v1';
+const DRAFT_KEY = 'flowstack_ingest_draft_v3';
+const PLACEHOLDER_KEY = 'flowstack_name_placeholder_v3';
 
 const NAME_PLACEHOLDERS = [
   'e.g. Alex Morgan',
@@ -72,11 +73,10 @@ const NAME_PLACEHOLDERS = [
 
 const pickSessionNamePlaceholder = () => {
   if (typeof window === 'undefined') return NAME_PLACEHOLDERS[0];
-  const key = 'flowstack_name_placeholder_v1';
-  const existing = window.sessionStorage.getItem(key);
+  const existing = window.sessionStorage.getItem(PLACEHOLDER_KEY);
   if (existing) return existing;
   const picked = NAME_PLACEHOLDERS[Math.floor(Math.random() * NAME_PLACEHOLDERS.length)];
-  window.sessionStorage.setItem(key, picked);
+  window.sessionStorage.setItem(PLACEHOLDER_KEY, picked);
   return picked;
 };
 
@@ -94,12 +94,12 @@ const loadDraft = (): Partial<IngestData> => {
       contactEmail: parsed.contactEmail || '',
       phone: parsed.phone || '',
       niche: parsed.niche || '',
+      messagesPerDay: Number(parsed.messagesPerDay || 0),
+      leadSources: Array.isArray(parsed.leadSources) ? parsed.leadSources : [],
+      primaryProblem: parsed.primaryProblem || '',
+      problemDetail: parsed.problemDetail || '',
       crmUsed: parsed.crmUsed || '',
       bookingLink: parsed.bookingLink || '',
-      problemDetail: parsed.problemDetail || '',
-      primaryProblem: parsed.primaryProblem || '',
-      messagesPerDay: parsed.messagesPerDay || 0,
-      leadSources: Array.isArray(parsed.leadSources) ? parsed.leadSources : [],
       needsBooking: Boolean(parsed.needsBooking),
       multipleOffers: Boolean(parsed.multipleOffers),
       needsStaffRouting: Boolean(parsed.needsStaffRouting),
@@ -174,40 +174,10 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
   const namePlaceholder = useMemo(() => pickSessionNamePlaceholder(), []);
 
-  const REQUIRED_FIELD_LABELS: Partial<Record<keyof IngestData, string>> = {
-    contactName: 'Your name',
-    agencyName: 'Business name',
-    contactEmail: 'Best email',
-    phone: 'Phone',
-    niche: 'Business type',
-    messagesPerDay: 'Messages per day',
-    leadSources: 'Lead sources',
-    primaryProblem: 'Main problem right now',
-  };
-
-  const getMissingRequiredFields = (input: IngestData) => {
-    const missing: string[] = [];
-
-    if (!input.contactName?.trim()) missing.push(REQUIRED_FIELD_LABELS.contactName!);
-    if (!input.agencyName?.trim()) missing.push(REQUIRED_FIELD_LABELS.agencyName!);
-    if (!input.contactEmail?.trim()) missing.push(REQUIRED_FIELD_LABELS.contactEmail!);
-    if (!input.phone?.trim()) missing.push(REQUIRED_FIELD_LABELS.phone!);
-    if (!input.niche?.trim()) missing.push(REQUIRED_FIELD_LABELS.niche!);
-    if (!input.primaryProblem?.trim()) missing.push(REQUIRED_FIELD_LABELS.primaryProblem!);
-    if (!Array.isArray(input.leadSources) || input.leadSources.length === 0) missing.push(REQUIRED_FIELD_LABELS.leadSources!);
-    if (!input.messagesPerDay || Number(input.messagesPerDay) <= 0) missing.push(REQUIRED_FIELD_LABELS.messagesPerDay!);
-
-    return missing;
-  };
-
   useEffect(() => {
     const draft = loadDraft();
     if (!Object.keys(draft).length) return;
-
-    onUpdate({
-      ...data,
-      ...draft,
-    });
+    onUpdate({ ...data, ...draft });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -220,12 +190,12 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
       contactEmail: data.contactEmail || '',
       phone: data.phone || '',
       niche: data.niche || '',
+      messagesPerDay: Number(data.messagesPerDay || 0),
+      leadSources: data.leadSources || [],
+      primaryProblem: data.primaryProblem || '',
+      problemDetail: data.problemDetail || '',
       crmUsed: data.crmUsed || '',
       bookingLink: data.bookingLink || '',
-      problemDetail: data.problemDetail || '',
-      primaryProblem: data.primaryProblem || '',
-      messagesPerDay: data.messagesPerDay || 0,
-      leadSources: data.leadSources || [],
       needsBooking: data.needsBooking,
       multipleOffers: data.multipleOffers,
       needsStaffRouting: data.needsStaffRouting,
@@ -238,12 +208,12 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     data.contactEmail,
     data.phone,
     data.niche,
-    data.crmUsed,
-    data.bookingLink,
-    data.problemDetail,
-    data.primaryProblem,
     data.messagesPerDay,
     data.leadSources,
+    data.primaryProblem,
+    data.problemDetail,
+    data.crmUsed,
+    data.bookingLink,
     data.needsBooking,
     data.multipleOffers,
     data.needsStaffRouting,
@@ -251,8 +221,29 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
 
   const handleChange = <K extends keyof IngestData>(field: K, value: IngestData[K]) => {
     onUpdate({ ...data, [field]: value });
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
-    if (submitNotice) setSubmitNotice(null);
+
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+
+    if (submitNotice) {
+      setSubmitNotice(null);
+    }
+  };
+
+  const getMissingRequiredFields = (input: IngestData) => {
+    const missing: string[] = [];
+
+    if (!input.contactName?.trim()) missing.push('Your name');
+    if (!input.agencyName?.trim()) missing.push('Business name');
+    if (!input.contactEmail?.trim()) missing.push('Best email');
+    if (!input.phone?.trim()) missing.push('Phone');
+    if (!input.niche?.trim()) missing.push('Business type');
+    if (!input.primaryProblem?.trim()) missing.push('Main problem right now');
+    if (!Array.isArray(input.leadSources) || input.leadSources.length === 0) missing.push('Lead sources');
+    if (!input.messagesPerDay || Number(input.messagesPerDay) <= 0) missing.push('Messages per day');
+
+    return missing;
   };
 
   const handleNext = () => {
@@ -272,6 +263,18 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
         const key = err.path[0] as keyof IngestData | undefined;
         if (key) fieldErrors[key] = err.message;
       });
+    }
+
+    if (!data.primaryProblem?.trim()) {
+      fieldErrors.primaryProblem = fieldErrors.primaryProblem || 'Please select the main problem right now.';
+    }
+
+    if (!Array.isArray(data.leadSources) || data.leadSources.length === 0) {
+      fieldErrors.leadSources = fieldErrors.leadSources || 'Please select at least one lead source.';
+    }
+
+    if (!data.messagesPerDay || Number(data.messagesPerDay) <= 0) {
+      fieldErrors.messagesPerDay = fieldErrors.messagesPerDay || 'Please enter messages per day.';
     }
 
     setErrors(fieldErrors);
@@ -316,8 +319,8 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               id="contactName"
-              name="name"
-              autoComplete="name"
+              name="contact_name"
+              autoComplete="off"
               label="Your name"
               value={data.contactName}
               onChange={e => handleChange('contactName', e.target.value)}
