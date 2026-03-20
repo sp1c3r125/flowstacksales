@@ -117,11 +117,17 @@ function normalizeLeadPayload(body: any) {
     lead_sources: Array.isArray(leadPayload.lead_sources) ? leadPayload.lead_sources.join(", ") : "",
   };
 
+  const resolvedEventName =
+    body?.metadata?.event_name ||
+    body?.activityPayload?.event_name ||
+    body?.event_name ||
+    "website_intake_submitted";
+
   const activityPayload: ActivityPayload = body?.activityPayload || {
     activity_id: `act_${Date.now()}`,
     lead_id: leadPayload.lead_id,
     tenant_id: body?.tenant_id || "demo-client",
-    event_name: "website_intake_submitted",
+    event_name: resolvedEventName,
     event_timestamp: timestamp,
     actor: "website",
     status: "success",
@@ -132,7 +138,7 @@ function normalizeLeadPayload(body: any) {
     source_app: "flowstacksales",
     source_step: body?.step || "proposal",
     tenant_id: body?.tenant_id || "demo-client",
-    event_name: "website_intake_submitted",
+    event_name: resolvedEventName,
     submitted_at: timestamp,
   };
 
@@ -381,9 +387,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       normalizedBody.activityPayload
     );
 
+    const shouldSendSalesHandoff =
+      normalizedBody.metadata.event_name === "sales_handoff_sent" ||
+      normalizedBody.activityPayload.event_name === "sales_handoff_sent";
+
     let emailResult: any = { sent: false, skipped: true };
 
-    if (normalizedBody.metadata.event_name === "sales_handoff_sent") {
+    if (shouldSendSalesHandoff) {
       emailResult = await sendSalesHandoffEmail(normalizedBody);
     }
 

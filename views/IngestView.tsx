@@ -57,7 +57,12 @@ const PRIMARY_PROBLEM_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ];
 
+<<<<<<< HEAD
 const DRAFT_KEY = 'flowstack_ingest_identity_draft_v1';
+=======
+const DRAFT_KEY = 'flowstack_ingest_draft_v2';
+const PLACEHOLDER_KEY = 'flowstack_name_placeholder_v2';
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
 
 const NAME_PLACEHOLDERS = [
   'e.g. Alex Morgan',
@@ -72,17 +77,27 @@ const NAME_PLACEHOLDERS = [
 
 const pickSessionNamePlaceholder = () => {
   if (typeof window === 'undefined') return NAME_PLACEHOLDERS[0];
+<<<<<<< HEAD
   const key = 'flowstack_name_placeholder_v1';
   const existing = window.sessionStorage.getItem(key);
   if (existing) return existing;
   const picked = NAME_PLACEHOLDERS[Math.floor(Math.random() * NAME_PLACEHOLDERS.length)];
   window.sessionStorage.setItem(key, picked);
+=======
+  const existing = window.sessionStorage.getItem(PLACEHOLDER_KEY);
+  if (existing) return existing;
+  const picked = NAME_PLACEHOLDERS[Math.floor(Math.random() * NAME_PLACEHOLDERS.length)];
+  window.sessionStorage.setItem(PLACEHOLDER_KEY, picked);
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
   return picked;
 };
 
 const loadDraft = (): Partial<IngestData> => {
   if (typeof window === 'undefined') return {};
+<<<<<<< HEAD
 
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
     if (!raw) return {};
@@ -94,12 +109,21 @@ const loadDraft = (): Partial<IngestData> => {
       contactEmail: parsed.contactEmail || '',
       phone: parsed.phone || '',
       niche: parsed.niche || '',
+<<<<<<< HEAD
       crmUsed: parsed.crmUsed || '',
       bookingLink: parsed.bookingLink || '',
       problemDetail: parsed.problemDetail || '',
       primaryProblem: parsed.primaryProblem || '',
       messagesPerDay: parsed.messagesPerDay || 0,
       leadSources: Array.isArray(parsed.leadSources) ? parsed.leadSources : [],
+=======
+      messagesPerDay: Number(parsed.messagesPerDay || 0),
+      leadSources: Array.isArray(parsed.leadSources) ? parsed.leadSources : [],
+      primaryProblem: parsed.primaryProblem || '',
+      problemDetail: parsed.problemDetail || '',
+      crmUsed: parsed.crmUsed || '',
+      bookingLink: parsed.bookingLink || '',
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
       needsBooking: Boolean(parsed.needsBooking),
       multipleOffers: Boolean(parsed.multipleOffers),
       needsStaffRouting: Boolean(parsed.needsStaffRouting),
@@ -174,6 +198,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
   const namePlaceholder = useMemo(() => pickSessionNamePlaceholder(), []);
 
+<<<<<<< HEAD
   const REQUIRED_FIELD_LABELS: Partial<Record<keyof IngestData, string>> = {
     contactName: 'Your name',
     agencyName: 'Business name',
@@ -208,29 +233,50 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
       ...data,
       ...draft,
     });
+=======
+  useEffect(() => {
+    const draft = loadDraft();
+    if (!Object.keys(draft).length) return;
+    onUpdate({ ...data, ...draft });
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+<<<<<<< HEAD
 
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     const draft = {
       contactName: data.contactName || '',
       agencyName: data.agencyName || '',
       contactEmail: data.contactEmail || '',
       phone: data.phone || '',
       niche: data.niche || '',
+<<<<<<< HEAD
       crmUsed: data.crmUsed || '',
       bookingLink: data.bookingLink || '',
       problemDetail: data.problemDetail || '',
       primaryProblem: data.primaryProblem || '',
       messagesPerDay: data.messagesPerDay || 0,
       leadSources: data.leadSources || [],
+=======
+      messagesPerDay: Number(data.messagesPerDay || 0),
+      leadSources: data.leadSources || [],
+      primaryProblem: data.primaryProblem || '',
+      problemDetail: data.problemDetail || '',
+      crmUsed: data.crmUsed || '',
+      bookingLink: data.bookingLink || '',
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
       needsBooking: data.needsBooking,
       multipleOffers: data.multipleOffers,
       needsStaffRouting: data.needsStaffRouting,
     };
+<<<<<<< HEAD
 
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   }, [
     data.contactName,
@@ -238,12 +284,21 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     data.contactEmail,
     data.phone,
     data.niche,
+<<<<<<< HEAD
     data.crmUsed,
     data.bookingLink,
     data.problemDetail,
     data.primaryProblem,
     data.messagesPerDay,
     data.leadSources,
+=======
+    data.messagesPerDay,
+    data.leadSources,
+    data.primaryProblem,
+    data.problemDetail,
+    data.crmUsed,
+    data.bookingLink,
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     data.needsBooking,
     data.multipleOffers,
     data.needsStaffRouting,
@@ -253,6 +308,22 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     onUpdate({ ...data, [field]: value });
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
     if (submitNotice) setSubmitNotice(null);
+<<<<<<< HEAD
+=======
+  };
+
+  const getMissingRequiredFields = (input: IngestData) => {
+    const missing: string[] = [];
+    if (!input.contactName?.trim()) missing.push('Your name');
+    if (!input.agencyName?.trim()) missing.push('Business name');
+    if (!input.contactEmail?.trim()) missing.push('Best email');
+    if (!input.phone?.trim()) missing.push('Phone');
+    if (!input.niche?.trim()) missing.push('Business type');
+    if (!input.primaryProblem?.trim()) missing.push('Main problem right now');
+    if (!Array.isArray(input.leadSources) || input.leadSources.length === 0) missing.push('Lead sources');
+    if (!input.messagesPerDay || Number(input.messagesPerDay) <= 0) missing.push('Messages per day');
+    return missing;
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
   };
 
   const handleNext = () => {
@@ -266,20 +337,27 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     }
 
     const fieldErrors: Partial<Record<keyof IngestData, string>> = {};
+<<<<<<< HEAD
 
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     if (!result.success) {
       result.error.errors.forEach(err => {
         const key = err.path[0] as keyof IngestData | undefined;
         if (key) fieldErrors[key] = err.message;
       });
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     setErrors(fieldErrors);
 
     if (missingFields.length > 0) {
       setSubmitNotice(`Please complete the required fields: ${missingFields.join(', ')}.`);
     } else {
       setSubmitNotice('Please review the highlighted required fields before continuing.');
+<<<<<<< HEAD
     }
 
     const firstMissingSelector =
@@ -297,6 +375,8 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
       setTimeout(() => {
         document.querySelector(firstMissingSelector)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 50);
+=======
+>>>>>>> a59916c (Add ingest memory and harden sales handoff email trigger)
     }
   };
 
