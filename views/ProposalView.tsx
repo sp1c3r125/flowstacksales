@@ -15,6 +15,22 @@ interface Props {
   onReset: () => void;
 }
 
+type NarrativeBlock =
+  | { type: 'heading'; text: string }
+  | { type: 'paragraph'; text: string }
+  | { type: 'bullets'; items: string[] };
+
+const SECTION_LABELS = [
+  'Executive Summary',
+  'Diagnosis',
+  'Revenue at Risk',
+  'Solution Architecture',
+  'Next Steps',
+  'Current Bottleneck',
+  'Recommended Package',
+  'Operational Signals',
+];
+
 export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const [proposal, setProposal] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -208,14 +224,76 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .trim();
   };
 
-  const splitNarrativeBlocks = (text: string) => {
-    const cleaned = stripMarkdown(text);
-    if (!cleaned) return ['-'];
+  const normalizeNarrativeText = (text: string) => {
+    const cleaned = stripMarkdown(text || '');
 
     return cleaned
-      .split('\n\n')
-      .map((block) => block.trim())
+      .replace(/\s+•\s+/g, '\n• ')
+      .replace(
+        new RegExp(`(${SECTION_LABELS.map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\s*:`, 'g'),
+        '\n\n$1:\n'
+      )
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const buildNarrativeBlocks = (text: string): NarrativeBlock[] => {
+    const normalized = normalizeNarrativeText(text);
+    if (!normalized) return [{ type: 'paragraph', text: '-' }];
+
+    const rawBlocks = normalized
+      .split(/\n\n+/)
+      .map(block => block.trim())
       .filter(Boolean);
+
+    const blocks: NarrativeBlock[] = [];
+
+    for (const block of rawBlocks) {
+      const lines = block
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      if (!lines.length) continue;
+
+      if (
+        lines.length === 1 &&
+        /^[A-Z][A-Za-z0-9\s/&():“”"'-]{1,80}$/.test(lines[0]) &&
+        !lines[0].startsWith('•')
+      ) {
+        blocks.push({ type: 'heading', text: lines[0] });
+        continue;
+      }
+
+      if (lines.length === 1 && /:$/.test(lines[0])) {
+        blocks.push({ type: 'heading', text: lines[0].replace(/:$/, '') });
+        continue;
+      }
+
+      const bulletItems = lines
+        .filter(line => line.startsWith('• '))
+        .map(line => line.replace(/^•\s*/, '').trim())
+        .filter(Boolean);
+
+      const nonBulletLines = lines.filter(line => !line.startsWith('• '));
+
+      if (nonBulletLines.length === 1 && /:$/.test(nonBulletLines[0])) {
+        blocks.push({ type: 'heading', text: nonBulletLines[0].replace(/:$/, '') });
+        if (bulletItems.length) {
+          blocks.push({ type: 'bullets', items: bulletItems });
+        }
+        continue;
+      }
+
+      if (bulletItems.length && bulletItems.length === lines.length) {
+        blocks.push({ type: 'bullets', items: bulletItems });
+        continue;
+      }
+
+      blocks.push({ type: 'paragraph', text: lines.join(' ') });
+    }
+
+    return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
   };
 
   const drawVerticalGradient = (
@@ -439,7 +517,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const margin = 40;
     const contentWidth = pageWidth - margin * 2;
     const lineHeight = 16;
-    const narrativeBlocks = splitNarrativeBlocks(proposal);
+    const narrativeBlocks = buildNarrativeBlocks(proposal);
 
     let y = margin;
 
@@ -588,33 +666,22 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     y += 20;
 
     narrativeBlocks.forEach((block) => {
-      const lines = block
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-      const bulletLines = lines.filter((line) => line.startsWith('• '));
-      const isHeading =
-        lines.length === 1 &&
-        /^[A-Z][A-Za-z0-9\s/&():“”"'-]{1,80}$/.test(lines[0]) &&
-        !lines[0].startsWith('•');
-
-      if (isHeading) {
-        y += drawWrappedTextBlock(doc, lines[0], margin, y, contentWidth, {
-          fontSize: 11,
+      if (block.type === 'heading') {
+        ensurePageSpace(28);
+        y += drawWrappedTextBlock(doc, block.text, margin, y, contentWidth, {
+          fontSize: 12,
           color: [15, 23, 42],
-          extraGap: 8,
-          lineHeight: 14,
+          extraGap: 10,
+          lineHeight: 16,
           fontStyle: 'bold',
         });
         return;
       }
 
-      if (bulletLines.length === lines.length && bulletLines.length > 0) {
-        bulletLines.forEach((line) => {
-          const normalized = line.replace(/^•\s*/, '').trim() || '-';
-          const bulletWrapped = doc.splitTextToSize(normalized, contentWidth - 14);
-          ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 4));
+      if (block.type === 'bullets') {
+        block.items.forEach((item) => {
+          const bulletWrapped = doc.splitTextToSize(item, contentWidth - 14);
+          ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 6));
 
           doc.setCharSpace?.(0);
           doc.setFont('helvetica', 'bold');
@@ -624,21 +691,23 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
           doc.setCharSpace?.(0);
           doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
           doc.setTextColor(51, 65, 85);
           doc.text(bulletWrapped, margin + 10, y);
 
-          y += bulletWrapped.length * 14 + 4;
+          y += bulletWrapped.length * 14 + 6;
         });
 
         y += 6;
         return;
       }
 
-      y += drawWrappedTextBlock(doc, lines.join(' '), margin, y, contentWidth, {
+      ensurePageSpace(28);
+      y += drawWrappedTextBlock(doc, block.text, margin, y, contentWidth, {
         fontSize: 10,
         color: [51, 65, 85],
-        extraGap: 10,
-        lineHeight: 14,
+        extraGap: 12,
+        lineHeight: 15,
       });
     });
 
