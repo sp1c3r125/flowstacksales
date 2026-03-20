@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
@@ -6,7 +6,6 @@ import { Terminal } from '../components/Terminal';
 import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
 import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { packageComparisonRows, packageOrder, serviceCatalog } from '../services/catalog';
 import { buildLeadCapturePayload } from '../services/intake';
 
@@ -42,6 +41,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
   const leadCapture = useMemo(() => buildLeadCapturePayload(appState), [appState]);
   const recommended = useMemo(() => serviceCatalog[leadCapture.packageKey], [leadCapture.packageKey]);
+  const visibleProposalBlocks = useMemo(
+    () => buildNarrativeBlocks(streamingText || proposal),
+    [streamingText, proposal]
+  );
 
   const company = appState.ingest.agencyName || 'Lead';
   const niche = appState.ingest.niche || 'Unknown';
@@ -276,16 +279,33 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         .filter(Boolean);
 
       const nonBulletLines = lines.filter(line => !line.startsWith('• '));
+      const normalizedHeading = nonBulletLines[0]?.replace(/:$/, '').trim() || '';
+      const isSectionHeading = SECTION_LABELS.some(
+        (label) => label.toLowerCase() === normalizedHeading.toLowerCase()
+      );
 
-      if (nonBulletLines.length === 1 && /:$/.test(nonBulletLines[0])) {
-        blocks.push({ type: 'heading', text: nonBulletLines[0].replace(/:$/, '') });
+      if (nonBulletLines.length === 1 && (/:$/.test(nonBulletLines[0]) || isSectionHeading)) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
         if (bulletItems.length) {
           blocks.push({ type: 'bullets', items: bulletItems });
         }
         continue;
       }
 
+      if (bulletItems.length && nonBulletLines.length > 1 && isSectionHeading) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
+        blocks.push({ type: 'paragraph', text: nonBulletLines.slice(1).join(' ') });
+        blocks.push({ type: 'bullets', items: bulletItems });
+        continue;
+      }
+
       if (bulletItems.length && bulletItems.length === lines.length) {
+        blocks.push({ type: 'bullets', items: bulletItems });
+        continue;
+      }
+
+      if (bulletItems.length && isSectionHeading) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
         blocks.push({ type: 'bullets', items: bulletItems });
         continue;
       }
@@ -826,19 +846,46 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 </div>
               </div>
             ) : (
-              <article className="prose prose-invert max-w-none">
-                <ReactMarkdown
-                  components={{
-                    h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider">{children}</h2>,
-                    p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
-                    ul: ({ children }) => <ul className="space-y-3 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
-                    li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50">{children}</li>,
-                    strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>,
-                  }}
-                >
-                  {streamingText}
-                </ReactMarkdown>
+              <article className="max-w-none space-y-5">
+                {visibleProposalBlocks.map((block, index) => {
+                  if (block.type === 'heading') {
+                    return (
+                      <div key={`heading-${index}`} className="pt-2 first:pt-0">
+                        <h2 className="text-lg font-bold uppercase tracking-[0.14em] text-emerald-400">
+                          {block.text}
+                        </h2>
+                      </div>
+                    );
+                  }
+
+                  if (block.type === 'bullets') {
+                    return (
+                      <ul
+                        key={`bullets-${index}`}
+                        className="space-y-3 rounded-xl border border-slate-800/70 bg-slate-900/40 p-5"
+                      >
+                        {block.items.map((item, itemIndex) => (
+                          <li
+                            key={`bullet-${index}-${itemIndex}`}
+                            className="flex gap-3 text-sm leading-7 text-slate-300"
+                          >
+                            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+
+                  return (
+                    <p
+                      key={`paragraph-${index}`}
+                      className="text-sm leading-7 text-slate-300 whitespace-pre-line"
+                    >
+                      {block.text}
+                    </p>
+                  );
+                })}
               </article>
             )}
           </div>
