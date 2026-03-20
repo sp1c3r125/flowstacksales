@@ -279,10 +279,39 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         .filter(Boolean);
 
       const nonBulletLines = lines.filter(line => !line.startsWith('• '));
-      const normalizedHeading = nonBulletLines[0]?.replace(/:$/, '').trim() || '';
+      const firstNonBulletLine = nonBulletLines[0] || '';
+      const normalizedHeading = firstNonBulletLine.replace(/:$/, '').trim() || '';
       const isSectionHeading = SECTION_LABELS.some(
         (label) => label.toLowerCase() === normalizedHeading.toLowerCase()
       );
+
+      const sectionPrefixLabel = SECTION_LABELS.find((label) => {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`^${escaped}\s*:`, 'i').test(firstNonBulletLine);
+      });
+
+      if (sectionPrefixLabel) {
+        const suffix = firstNonBulletLine
+          .replace(new RegExp(`^${sectionPrefixLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\s*:\s*`, 'i'), '')
+          .trim();
+
+        const paragraphLines = [
+          ...(suffix ? [suffix] : []),
+          ...nonBulletLines.slice(1),
+        ].filter(Boolean);
+
+        blocks.push({ type: 'heading', text: sectionPrefixLabel });
+
+        if (paragraphLines.length) {
+          blocks.push({ type: 'paragraph', text: paragraphLines.join(' ') });
+        }
+
+        if (bulletItems.length) {
+          blocks.push({ type: 'bullets', items: bulletItems });
+        }
+
+        continue;
+      }
 
       if (nonBulletLines.length === 1 && (/:$/.test(nonBulletLines[0]) || isSectionHeading)) {
         blocks.push({ type: 'heading', text: normalizedHeading });
