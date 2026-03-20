@@ -211,7 +211,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
-  const stripMarkdown = (text: string) => {
+  function stripMarkdown(text: string) {
     return (text || '')
       .replace(/\r\n/g, '\n')
       .replace(/^#{1,6}\s*/gm, '')
@@ -225,9 +225,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .replace(/^>\s?/gm, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-  };
+  }
 
-  const normalizeNarrativeText = (text: string) => {
+  function normalizeNarrativeText(text: string) {
     const cleaned = stripMarkdown(text || '');
 
     return cleaned
@@ -238,9 +238,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       )
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-  };
+  }
 
-  const buildNarrativeBlocks = (text: string): NarrativeBlock[] => {
+  function buildNarrativeBlocks(text: string): NarrativeBlock[] {
     const normalized = normalizeNarrativeText(text);
     if (!normalized) return [{ type: 'paragraph', text: '-' }];
 
@@ -314,7 +314,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     }
 
     return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
-  };
+  }
 
   const drawVerticalGradient = (
     doc: jsPDF,
