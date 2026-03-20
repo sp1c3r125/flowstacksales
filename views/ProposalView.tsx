@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
-import { AmbientBlueBackground, DotCluster, NeonPanel } from '../components/FlowstackBlueAmbientTheme';
+import { NeonPanel } from '../components/FlowstackBlueAmbientTheme';
 import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
 import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
@@ -795,13 +795,8 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#020817] pb-20 text-white animate-[fadeIn_1s_ease-out]">
-      <AmbientBlueBackground />
-      <DotCluster className="right-[-40px] top-24" />
-      <DotCluster className="bottom-10 left-[-30px]" />
-
-      <div className="relative z-10 space-y-6">
-        <Terminal isOpen={deployStatus === 'sending'} logs={deployLogs} logsEndRef={logsEndRef} />
+    <div className="space-y-6 animate-[fadeIn_1s_ease-out] pb-20 relative">
+      <Terminal isOpen={deployStatus === 'sending'} logs={deployLogs} logsEndRef={logsEndRef} />
 
         <div className="text-center mb-8 max-w-4xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight flex items-center justify-center gap-3">
@@ -984,7 +979,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           )}
         </div>
       </BentoGrid>
-      </div>
     </div>
   );
 };

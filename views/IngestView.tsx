@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Input, Button, Select } from '../components/UI';
+import { NeonPanel, primaryButtonClass } from '../components/FlowstackBlueAmbientTheme';
 import { IngestData, IngestSchema } from '../types';
 import {
   ArrowRight,
@@ -172,12 +173,14 @@ const MultiSelectPills: React.FC<{
 export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof IngestData, string>>>({});
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
   const namePlaceholder = useMemo(() => pickSessionNamePlaceholder(), []);
 
   useEffect(() => {
     const draft = loadDraft();
     if (!Object.keys(draft).length) return;
     onUpdate({ ...data, ...draft });
+    setDraftRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -218,6 +221,34 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     data.multipleOffers,
     data.needsStaffRouting,
   ]);
+
+  const handleClearDraft = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+
+    setDraftRestored(false);
+    setErrors({});
+    setSubmitNotice(null);
+
+    onUpdate({
+      ...data,
+      contactName: '',
+      agencyName: '',
+      contactEmail: '',
+      phone: '',
+      niche: '',
+      messagesPerDay: 0,
+      leadSources: [],
+      primaryProblem: '',
+      problemDetail: '',
+      crmUsed: '',
+      bookingLink: '',
+      needsBooking: false,
+      multipleOffers: false,
+      needsStaffRouting: false,
+    });
+  };
 
   const handleChange = <K extends keyof IngestData>(field: K, value: IngestData[K]) => {
     onUpdate({ ...data, [field]: value });
@@ -305,23 +336,45 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
 
   return (
     <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-      <div className="text-center mb-10 max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl text-center mb-10">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
           Tell us about your <span className="text-emerald-500">lead flow</span>
         </h1>
         <p className="text-slate-400 text-base">
           We’ll use this to qualify the lead and recommend the right Flowstack package internally.
         </p>
+        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+          Fields marked <span className="text-rose-400">*</span> are required.
+        </p>
       </div>
 
-      <BentoGrid className="max-w-6xl">
+      <div className="mx-auto max-w-6xl space-y-4">
+        {draftRestored ? (
+          <NeonPanel className="px-4 py-3">
+            <div className="flex flex-col gap-3 text-sm text-cyan-100 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-300/75">Draft restored</div>
+                <div className="text-slate-300">Previous form data was restored on this browser.</div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearDraft}
+                className="text-left text-xs font-mono uppercase tracking-[0.18em] text-slate-400 transition hover:text-white"
+              >
+                Clear saved form
+              </button>
+            </div>
+          </NeonPanel>
+        ) : null}
+
+        <BentoGrid className="max-w-6xl">
         <BentoCard title="Business and contact" className="col-span-12 md:col-span-7" accent="green">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               id="contactName"
               name="contact_name"
               autoComplete="off"
-              label="Your name"
+              label="Your name *"
               value={data.contactName}
               onChange={e => handleChange('contactName', e.target.value)}
               error={errors.contactName}
@@ -332,7 +385,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               id="agencyName"
               name="organization"
               autoComplete="organization"
-              label="Business name"
+              label="Business name *"
               value={data.agencyName}
               onChange={e => handleChange('agencyName', e.target.value)}
               error={errors.agencyName}
@@ -345,7 +398,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               type="email"
               inputMode="email"
               autoComplete="email"
-              label="Best email"
+              label="Best email *"
               value={data.contactEmail}
               onChange={e => handleChange('contactEmail', e.target.value)}
               error={errors.contactEmail}
@@ -357,7 +410,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
               name="tel"
               type="tel"
               autoComplete="tel"
-              label="Phone"
+              label="Phone *"
               value={data.phone}
               onChange={e => handleChange('phone', e.target.value)}
               error={errors.phone}
@@ -366,7 +419,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
             />
             <Select
               id="niche"
-              label="Business type"
+              label="Business type *"
               value={data.niche}
               onChange={e => handleChange('niche', e.target.value)}
               error={errors.niche}
@@ -375,7 +428,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
             />
             <Input
               id="messagesPerDay"
-              label="Messages per day"
+              label="Messages per day *"
               type="number"
               value={String(data.messagesPerDay)}
               onChange={e => handleChange('messagesPerDay', Number(e.target.value || 0))}
@@ -387,7 +440,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
 
           <div className="mt-6" data-field="leadSources">
             <MultiSelectPills
-              label="Lead sources"
+              label="Lead sources *"
               values={data.leadSources}
               options={LEAD_SOURCE_OPTIONS}
               error={errors.leadSources}
@@ -400,7 +453,7 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
           <div className="space-y-6">
             <Select
               id="primaryProblem"
-              label="Main problem right now"
+              label="Main problem right now *"
               value={data.primaryProblem}
               onChange={e => handleChange('primaryProblem', e.target.value)}
               error={errors.primaryProblem}
@@ -470,11 +523,12 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
 
         <div className="col-span-12 flex justify-between pt-4">
           <Button onClick={onBack} variant="secondary"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-          <Button onClick={handleNext} className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500 shadow-emerald-900/20">
+          <Button onClick={handleNext} className={primaryButtonClass}>
             Generate recommendation <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </BentoGrid>
+      </div>
     </div>
   );
 };

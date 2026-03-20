@@ -6,6 +6,7 @@ import { ProposalView } from './views/ProposalView';
 import { calculateMonthlyLeakage, calculateAnnualLeakage } from './utils/calculations';
 import { Zap } from 'lucide-react';
 import { CSRChatbot } from './components/CSRChatbot';
+import { AmbientBlueBackground, DotCluster } from './components/FlowstackBlueAmbientTheme';
 
 const STORAGE_KEY = 'flowstack_os_state_v1';
 
@@ -83,8 +84,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30 selection:text-blue-200 flex flex-col">
-      <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+    <div className="min-h-screen bg-[#020817] text-slate-200 font-sans selection:bg-blue-500/30 selection:text-blue-200 flex flex-col">
+      <header className="border-b border-blue-500/10 bg-[#020817]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-[0_0_15px_-3px_rgba(59,130,246,0.6)]"><Zap className="text-white fill-white" size={16} /></div>
@@ -100,9 +101,11 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 w-full relative">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-20" />
-        <div className="relative py-12 px-4">
+      <main className="flex-1 w-full relative overflow-hidden bg-[#020817]">
+        <AmbientBlueBackground />
+        <DotCluster className="right-[-40px] top-24" />
+        <DotCluster className="bottom-10 left-[-30px]" />
+        <div className="relative z-10 py-12 px-4">
           <ErrorBoundary>
             {appState.step === 'calculator' && <CalculatorView data={appState.calculator} onUpdate={updateCalculator} onNext={goToIngest} />}
             {appState.step === 'ingest' && <IngestView data={appState.ingest} onUpdate={updateIngest} onNext={() => setAppState(prev => ({ ...prev, step: 'proposal' }))} onBack={() => setAppState(prev => ({ ...prev, step: 'calculator' }))} />}
@@ -111,7 +114,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="border-t border-slate-900 py-8 text-center text-xs text-slate-600 font-mono">
+      <footer className="border-t border-blue-500/10 py-8 text-center text-xs text-slate-500 font-mono bg-[#020817]/70 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
           <div>Package-based deployment</div>
           <div>Approved scope only</div>
