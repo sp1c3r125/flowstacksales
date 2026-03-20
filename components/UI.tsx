@@ -7,9 +7,6 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const surfaceInputClass =
-  'w-full rounded-xl border border-blue-300/22 bg-[#04101f]/88 px-4 py-3 text-sm text-slate-100 font-mono shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgba(37,99,235,0.06)] outline-none transition placeholder:text-slate-500 focus:border-cyan-300/65 focus:ring-2 focus:ring-cyan-400/24';
-
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
@@ -20,40 +17,42 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className, prefix, suffix, ...props }, ref) => {
     return (
-      <div className="w-full space-y-2">
-        <label className="text-sm font-mono font-bold uppercase tracking-wider text-slate-400">
+      <div className="space-y-2 w-full">
+        <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">
           {label}
         </label>
         <div className="relative group">
           {prefix && (
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
               {prefix}
             </div>
           )}
           <input
             ref={ref}
             className={cn(
-              surfaceInputClass,
-              'disabled:cursor-not-allowed disabled:opacity-50',
-              prefix && 'pl-10',
-              suffix && 'pr-8',
-              error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
+              "w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 font-mono text-sm transition-all outline-none",
+              "focus:border-blue-500 focus:shadow-[0_0_0_1px_rgba(59,130,246,0.5)]",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              prefix && "pl-10",
+              suffix && "pr-8",
+              error && "border-red-500 focus:border-red-500 focus:shadow-[0_0_0_1px_rgba(239,68,68,0.5)]",
               className
             )}
             {...props}
           />
           {suffix && (
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-sm text-slate-500">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-sm pointer-events-none">
               {suffix}
             </div>
           )}
         </div>
-        {error && <p className="animate-pulse font-mono text-xs text-red-400">{error}</p>}
+        {error && (
+          <p className="text-xs text-red-400 font-mono animate-pulse">{error}</p>
+        )}
       </div>
     );
   }
 );
-Input.displayName = 'Input';
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
@@ -65,46 +64,46 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, className, prefix, options, ...props }, ref) => {
     return (
-      <div className="w-full space-y-2">
-        <label className="text-sm font-mono font-bold uppercase tracking-wider text-slate-400">
+      <div className="space-y-2 w-full">
+        <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">
           {label}
         </label>
         <div className="relative group">
           {prefix && (
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
               {prefix}
             </div>
           )}
           <select
             ref={ref}
             className={cn(
-              surfaceInputClass,
-              'appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50',
-              prefix && 'pl-10',
-              error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
+              "w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 font-mono text-sm transition-all outline-none appearance-none cursor-pointer",
+              "focus:border-blue-500 focus:shadow-[0_0_0_1px_rgba(59,130,246,0.5)]",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              prefix && "pl-10",
+              error && "border-red-500 focus:border-red-500 focus:shadow-[0_0_0_1px_rgba(239,68,68,0.5)]",
               className
             )}
             {...props}
           >
-            <option value="" disabled className="bg-[#04101f] text-slate-500">
-              Select an option...
-            </option>
+            <option value="" disabled className="text-slate-500 bg-slate-950">Select an option...</option>
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-[#04101f] text-slate-100">
+              <option key={opt.value} value={opt.value} className="bg-slate-950">
                 {opt.label}
               </option>
             ))}
           </select>
-          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
-            <ChevronDown size={16} />
-          </div>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                <ChevronDown size={16} />
+            </div>
         </div>
-        {error && <p className="animate-pulse font-mono text-xs text-red-400">{error}</p>}
+        {error && (
+          <p className="text-xs text-red-400 font-mono animate-pulse">{error}</p>
+        )}
       </div>
     );
   }
 );
-Select.displayName = 'Select';
 
 interface RangeControlProps {
   label: string;
@@ -132,28 +131,37 @@ export const RangeControl: React.FC<RangeControlProps> = ({
   const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
   return (
-    <div className="group w-full space-y-3">
-      <div className="flex items-end justify-between">
-        <label className="text-sm font-mono font-bold uppercase tracking-wider text-slate-400">{label}</label>
-        <div className="flex items-center gap-1 rounded-lg border border-blue-300/18 bg-[#04101f]/88 px-2 py-1 transition-all focus-within:border-cyan-300/65 focus-within:ring-2 focus-within:ring-cyan-400/20">
-          {prefix && <span className="select-none font-mono text-sm text-slate-500">{prefix}</span>}
+    <div className="space-y-3 w-full group">
+      <div className="flex justify-between items-end">
+        <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">
+          {label}
+        </label>
+        <div className="flex items-center gap-1 bg-slate-950/50 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.5)] transition-all">
+          {prefix && <span className="text-slate-500 font-mono text-sm select-none">{prefix}</span>}
           <input
             type="number"
             value={value}
             onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              if (!isNaN(val)) onChange(val);
+                const val = parseFloat(e.target.value);
+                if(!isNaN(val)) onChange(val);
             }}
-            className="w-20 appearance-none bg-transparent text-right font-mono text-sm text-slate-100 outline-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-20 bg-transparent text-right text-slate-200 font-mono text-sm outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
-          {suffix && <span className="select-none font-mono text-sm text-slate-500">{suffix}</span>}
+          {suffix && <span className="text-slate-500 font-mono text-sm select-none">{suffix}</span>}
         </div>
       </div>
-
-      <div className="relative flex h-6 items-center">
-        <div className="absolute h-2 w-full overflow-hidden rounded-full bg-blue-950/90">
-          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-100 ease-out" style={{ width: `${percentage}%` }} />
+      
+      <div className="relative h-6 flex items-center">
+        {/* Track Background */}
+        <div className="absolute w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+             {/* Fill */}
+             <div 
+                className="h-full bg-blue-600 transition-all duration-100 ease-out" 
+                style={{ width: `${percentage}%` }}
+             />
         </div>
+        
+        {/* Native Range Input (Invisible but interactive) */}
         <input
           type="range"
           min={min}
@@ -161,15 +169,21 @@ export const RangeControl: React.FC<RangeControlProps> = ({
           step={step}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="absolute z-10 h-full w-full cursor-pointer opacity-0"
+          className="absolute w-full h-full opacity-0 cursor-pointer z-10"
         />
-        <div
-          className="pointer-events-none absolute z-0 h-5 w-5 rounded-full border-2 border-cyan-300 bg-white shadow-[0_0_14px_rgba(34,211,238,0.45)] transition-all duration-100 ease-out group-active:scale-110"
-          style={{ left: `calc(${percentage}% - 10px)` }}
+        
+        {/* Custom Thumb (Visual only, positioned by percentage) */}
+        <div 
+            className="absolute h-5 w-5 bg-white border-2 border-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] pointer-events-none transition-all duration-100 ease-out group-active:scale-110 z-0"
+            style={{ 
+                left: `calc(${percentage}% - 10px)` 
+            }}
         />
       </div>
 
-      {error && <p className="animate-pulse font-mono text-xs text-red-400">{error}</p>}
+      {error && (
+        <p className="text-xs text-red-400 font-mono animate-pulse">{error}</p>
+      )}
     </div>
   );
 };
@@ -188,19 +202,17 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const variants = {
-    primary:
-      'border border-cyan-300/40 bg-gradient-to-b from-blue-500/30 to-cyan-400/16 text-blue-50 shadow-[0_0_24px_rgba(59,130,246,0.25)] hover:border-cyan-200/70 hover:from-blue-400/40 hover:to-cyan-300/22 hover:shadow-[0_0_36px_rgba(34,211,238,0.30)]',
-    secondary:
-      'border border-blue-300/22 bg-[#071224]/78 text-slate-100 hover:border-cyan-300/40 hover:bg-[#0b1730]/86',
-    ghost: 'bg-transparent text-slate-400 hover:bg-blue-900/20 hover:text-slate-100',
-    danger: 'border border-red-500/60 bg-red-600/90 text-white shadow-lg shadow-red-900/20 hover:bg-red-500',
+    primary: 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 border border-blue-500',
+    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700',
+    ghost: 'bg-transparent hover:bg-slate-800/50 text-slate-400 hover:text-slate-200',
+    danger: 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 border border-red-500',
   };
 
   return (
     <button
       disabled={disabled || isLoading}
       className={cn(
-        'inline-flex items-center justify-center rounded-xl px-6 py-3 font-mono text-sm font-medium transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
+        "inline-flex items-center justify-center rounded-lg px-6 py-3 font-mono text-sm font-medium transition-all active:scale-95 disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed",
         variants[variant],
         className
       )}

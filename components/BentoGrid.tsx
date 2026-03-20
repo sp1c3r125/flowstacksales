@@ -13,7 +13,7 @@ export const BentoGrid: React.FC<{ children: React.ReactNode; className?: string
   return (
     <div
       className={cn(
-        'grid grid-cols-1 md:grid-cols-12 gap-4 max-w-7xl mx-auto p-4',
+        "grid grid-cols-1 md:grid-cols-12 gap-4 max-w-7xl mx-auto p-4",
         className
       )}
     >
@@ -30,51 +30,49 @@ export const BentoCard: React.FC<{
   accent?: 'blue' | 'green' | 'red' | 'default';
 }> = ({ children, className, title, headerAction, accent = 'default' }) => {
   const borderColors = {
-    default: 'border-blue-300/18',
-    blue: 'border-blue-300/30',
-    green: 'border-emerald-400/28',
-    red: 'border-cyan-300/24',
-  };
-
-  const accentDots = {
-    default: 'bg-slate-500',
-    blue: 'bg-cyan-300',
-    green: 'bg-emerald-400',
-    red: 'bg-sky-300',
+    default: 'border-slate-800',
+    blue: 'border-blue-500/50',
+    green: 'border-emerald-500/50',
+    red: 'border-red-500/50',
   };
 
   const bgGlow = {
-    default: 'shadow-[0_0_0_1px_rgba(96,165,250,0.06),0_0_24px_rgba(37,99,235,0.10)]',
-    blue: 'shadow-[0_0_0_1px_rgba(96,165,250,0.08),0_0_30px_rgba(37,99,235,0.16)]',
-    green: 'shadow-[0_0_0_1px_rgba(52,211,153,0.08),0_0_28px_rgba(16,185,129,0.12)]',
-    red: 'shadow-[0_0_0_1px_rgba(125,211,252,0.08),0_0_28px_rgba(34,211,238,0.12)]',
+    default: '',
+    blue: 'shadow-[0_0_15px_-3px_rgba(59,130,246,0.1)]',
+    green: 'shadow-[0_0_15px_-3px_rgba(16,185,129,0.1)]',
+    red: 'shadow-[0_0_15px_-3px_rgba(239,68,68,0.1)]',
   };
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl border bg-[#071224]/72 backdrop-blur-xl flex flex-col transition-all duration-300',
-        'before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(180deg,rgba(96,165,250,0.10),transparent_25%,transparent_75%,rgba(34,211,238,0.06))]',
+        "bg-slate-900/50 backdrop-blur-sm border rounded-xl overflow-hidden flex flex-col relative group transition-all duration-300",
         borderColors[accent],
         bgGlow[accent],
         className
       )}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-blue-300/25 to-transparent" />
-
+      {/* Tech line decorations */}
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent opacity-50" />
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent opacity-50" />
+      
       {(title || headerAction) && (
-        <div className="relative z-10 flex items-center justify-between border-b border-blue-300/12 bg-[#04101f]/55 px-6 py-4">
+        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
           {title && (
-            <h3 className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-slate-300">
-              <span className={cn('h-2 w-2 rounded-full', accentDots[accent])} />
+            <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 flex items-center gap-2">
+              <span className={cn("w-2 h-2 rounded-full", {
+                'bg-slate-600': accent === 'default',
+                'bg-blue-500': accent === 'blue',
+                'bg-emerald-500': accent === 'green',
+                'bg-red-500': accent === 'red',
+              })} />
               {title}
             </h3>
           )}
           {headerAction}
         </div>
       )}
-      <div className="relative z-10 flex-1 p-6">{children}</div>
+      <div className="p-6 flex-1 relative z-10">{children}</div>
     </div>
   );
 };
