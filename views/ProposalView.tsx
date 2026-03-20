@@ -3,10 +3,10 @@ import { jsPDF } from 'jspdf';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button } from '../components/UI';
 import { Terminal } from '../components/Terminal';
+import { AmbientBlueBackground, DotCluster, NeonPanel } from '../components/FlowstackBlueAmbientTheme';
 import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
 import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { packageComparisonRows, packageOrder, serviceCatalog } from '../services/catalog';
 import { buildLeadCapturePayload } from '../services/intake';
 
@@ -42,6 +42,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
   const leadCapture = useMemo(() => buildLeadCapturePayload(appState), [appState]);
   const recommended = useMemo(() => serviceCatalog[leadCapture.packageKey], [leadCapture.packageKey]);
+  const visibleProposalBlocks = useMemo(
+    () => buildNarrativeBlocks(streamingText || proposal),
+    [streamingText, proposal]
+  );
 
   const company = appState.ingest.agencyName || 'Lead';
   const niche = appState.ingest.niche || 'Unknown';
@@ -208,16 +212,6 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
-  function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  function isNarrativeNoise(value: string) {
-    const normalized = (value || '').replace(/^•\s*/, '').trim();
-    if (!normalized) return true;
-    return /^[.·•,:;|/\\-]+$/.test(normalized);
-  }
-
   function stripMarkdown(text: string) {
     return (text || '')
       .replace(/\r\n/g, '\n')
@@ -236,11 +230,13 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
   function normalizeNarrativeText(text: string) {
     const cleaned = stripMarkdown(text || '');
-    const sectionPattern = new RegExp(`(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\\s*:`, 'gi');
 
     return cleaned
       .replace(/\s+•\s+/g, '\n• ')
-      .replace(sectionPattern, '\n\n$1:\n')
+      .replace(
+        new RegExp(`(${SECTION_LABELS.map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\s*:`, 'g'),
+        '\n\n$1:\n'
+      )
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -257,12 +253,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const blocks: NarrativeBlock[] = [];
 
     for (const block of rawBlocks) {
-      const rawLines = block
+      const lines = block
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean);
 
-      const lines = rawLines.filter(line => !isNarrativeNoise(line));
       if (!lines.length) continue;
 
       if (
@@ -279,42 +274,29 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         continue;
       }
 
-      const firstLineMatch = lines[0].match(
-        new RegExp(`^(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\s*:\s*(.*)$`, 'i')
+      const bulletItems = lines
+        .filter(line => line.startsWith('• '))
+        .map(line => line.replace(/^•\s*/, '').trim())
+        .filter(Boolean);
+
+      const nonBulletLines = lines.filter(line => !line.startsWith('• '));
+      const normalizedHeading = nonBulletLines[0]?.replace(/:$/, '').trim() || '';
+      const isSectionHeading = SECTION_LABELS.some(
+        (label) => label.toLowerCase() === normalizedHeading.toLowerCase()
       );
 
-      if (firstLineMatch) {
-        const [, sectionLabel, introText] = firstLineMatch;
-        blocks.push({ type: 'heading', text: sectionLabel.trim() });
-
-        const normalizedIntro = (introText || '').trim();
-        if (normalizedIntro && !isNarrativeNoise(normalizedIntro)) {
-          blocks.push({ type: 'paragraph', text: normalizedIntro });
-        }
-
-        const remainingItems = lines
-          .slice(1)
-          .map(line => line.replace(/^•\s*/, '').trim())
-          .filter(item => item && !isNarrativeNoise(item));
-
-        if (remainingItems.length) {
-          blocks.push({ type: 'bullets', items: remainingItems });
+      if (nonBulletLines.length === 1 && (/:$/.test(nonBulletLines[0]) || isSectionHeading)) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
+        if (bulletItems.length) {
+          blocks.push({ type: 'bullets', items: bulletItems });
         }
         continue;
       }
 
-      const bulletItems = lines
-        .filter(line => line.startsWith('• '))
-        .map(line => line.replace(/^•\s*/, '').trim())
-        .filter(item => item && !isNarrativeNoise(item));
-
-      const nonBulletLines = lines.filter(line => !line.startsWith('• ') && !isNarrativeNoise(line));
-
-      if (nonBulletLines.length === 1 && /:$/.test(nonBulletLines[0])) {
-        blocks.push({ type: 'heading', text: nonBulletLines[0].replace(/:$/, '') });
-        if (bulletItems.length) {
-          blocks.push({ type: 'bullets', items: bulletItems });
-        }
+      if (bulletItems.length && nonBulletLines.length > 1 && isSectionHeading) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
+        blocks.push({ type: 'paragraph', text: nonBulletLines.slice(1).join(' ') });
+        blocks.push({ type: 'bullets', items: bulletItems });
         continue;
       }
 
@@ -323,10 +305,13 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         continue;
       }
 
-      const paragraphText = nonBulletLines.join(' ').trim();
-      if (paragraphText && !isNarrativeNoise(paragraphText)) {
-        blocks.push({ type: 'paragraph', text: paragraphText });
+      if (bulletItems.length && isSectionHeading) {
+        blocks.push({ type: 'heading', text: normalizedHeading });
+        blocks.push({ type: 'bullets', items: bulletItems });
+        continue;
       }
+
+      blocks.push({ type: 'paragraph', text: lines.join(' ') });
     }
 
     return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
@@ -810,10 +795,15 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   };
 
   return (
-    <div className="space-y-6 animate-[fadeIn_1s_ease-out] pb-20 relative">
-      <Terminal isOpen={deployStatus === 'sending'} logs={deployLogs} logsEndRef={logsEndRef} />
+    <div className="relative min-h-screen overflow-hidden bg-[#020817] pb-20 text-white animate-[fadeIn_1s_ease-out]">
+      <AmbientBlueBackground />
+      <DotCluster className="right-[-40px] top-24" />
+      <DotCluster className="bottom-10 left-[-30px]" />
 
-      <div className="text-center mb-8 max-w-4xl mx-auto">
+      <div className="relative z-10 space-y-6">
+        <Terminal isOpen={deployStatus === 'sending'} logs={deployLogs} logsEndRef={logsEndRef} />
+
+        <div className="text-center mb-8 max-w-4xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight flex items-center justify-center gap-3">
           <FileBarChart className={loading ? 'animate-bounce text-blue-500' : 'text-emerald-500'} />
           Recommended <span className="text-emerald-500">package</span>
@@ -844,7 +834,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
               <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
               <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
             </div>
-          </div>
+          </NeonPanel>
         </BentoCard>
 
         <BentoCard
@@ -852,7 +842,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           title="Proposal"
           headerAction={<ArrowRight size={14} className="text-slate-500" />}
         >
-          <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-inner overflow-y-auto max-h-[60vh]">
+          <NeonPanel className="flex-1 max-h-[60vh] overflow-y-auto p-8">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
                 <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -862,19 +852,46 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
                 </div>
               </div>
             ) : (
-              <article className="prose prose-invert max-w-none">
-                <ReactMarkdown
-                  components={{
-                    h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-4">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold text-emerald-400 mt-8 mb-4 uppercase tracking-wider">{children}</h2>,
-                    p: ({ children }) => <p className="text-slate-300 leading-relaxed mb-4 text-sm">{children}</p>,
-                    ul: ({ children }) => <ul className="space-y-3 mb-6 bg-slate-900/40 p-6 rounded-lg border border-slate-800/50">{children}</ul>,
-                    li: ({ children }) => <li className="text-slate-300 text-sm leading-relaxed block pl-2 border-l-2 border-slate-700/50">{children}</li>,
-                    strong: ({ children }) => <strong className="text-white font-bold mr-2 inline-block">{children}</strong>,
-                  }}
-                >
-                  {streamingText}
-                </ReactMarkdown>
+              <article className="max-w-none space-y-5">
+                {visibleProposalBlocks.map((block, index) => {
+                  if (block.type === 'heading') {
+                    return (
+                      <div key={`heading-${index}`} className="pt-2 first:pt-0">
+                        <h2 className="text-lg font-bold uppercase tracking-[0.14em] text-emerald-400">
+                          {block.text}
+                        </h2>
+                      </div>
+                    );
+                  }
+
+                  if (block.type === 'bullets') {
+                    return (
+                      <ul
+                        key={`bullets-${index}`}
+                        className="space-y-3 rounded-xl border border-slate-800/70 bg-slate-900/40 p-5"
+                      >
+                        {block.items.map((item, itemIndex) => (
+                          <li
+                            key={`bullet-${index}-${itemIndex}`}
+                            className="flex gap-3 text-sm leading-7 text-slate-300"
+                          >
+                            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+
+                  return (
+                    <p
+                      key={`paragraph-${index}`}
+                      className="text-sm leading-7 text-slate-300 whitespace-pre-line"
+                    >
+                      {block.text}
+                    </p>
+                  );
+                })}
               </article>
             )}
           </div>
@@ -967,6 +984,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
           )}
         </div>
       </BentoGrid>
+      </div>
     </div>
   );
 };
