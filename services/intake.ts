@@ -1,5 +1,11 @@
 import type { AppState, IngestData } from '../types';
-import { recommendPackage, serviceCatalog, type PackageKey } from './catalog';
+import {
+  recommendPackage,
+  serviceCatalog,
+  type PackageKey,
+  getEnterpriseReasons,
+  enterpriseSetupFloor,
+} from './catalog';
 
 const packageRank: Record<PackageKey, number> = {
   lite: 0,
@@ -8,25 +14,56 @@ const packageRank: Record<PackageKey, number> = {
   scale: 3,
 };
 
-export const recommendPackageFromInputs = (monthlyLeakage: number, ingest: IngestData): PackageKey => {
-  let recommended = recommendPackage(monthlyLeakage);
+type IntakeRecommendation = {
+  packageKey: PackageKey;
+  recommendedLabel: string;
+  enterpriseReasons: string[];
+  needsEnterprise: boolean;
+};
+
+export const recommendPackageFromInputs = (monthlyLeakage: number, ingest: IngestData): IntakeRecommendation => {
+  let packageKey = recommendPackage(monthlyLeakage);
 
   const sourceCount = ingest.leadSources.length;
   const volume = Number(ingest.messagesPerDay || 0);
 
   if (ingest.needsStaffRouting || ingest.multipleOffers || volume >= 40 || sourceCount >= 3) {
-    recommended = packageRank[recommended] < packageRank.scale ? 'scale' : recommended;
+    packageKey = packageRank[packageKey] < packageRank.scale ? 'scale' : packageKey;
   } else if (ingest.needsBooking && (volume >= 10 || sourceCount >= 2 || monthlyLeakage >= 60000)) {
-    recommended = packageRank[recommended] < packageRank.growth ? 'growth' : recommended;
+    packageKey = packageRank[packageKey] < packageRank.growth ? 'growth' : packageKey;
   } else if (ingest.needsBooking || volume >= 3 || sourceCount >= 1) {
-    recommended = packageRank[recommended] < packageRank.starter ? 'starter' : recommended;
+    packageKey = packageRank[packageKey] < packageRank.starter ? 'starter' : packageKey;
   }
 
-  return recommended;
+  const enterpriseReasons =
+    packageKey === 'scale'
+      ? getEnterpriseReasons({
+          leadSources: sourceCount,
+          offers: ingest.multipleOffers ? 5 : 1,
+          pipelines: ingest.needsStaffRouting ? 6 : ingest.needsBooking ? 2 : 1,
+          sequences: volume >= 40 ? 5 : ingest.needsBooking ? 2 : 1,
+          multiLocation: false,
+          customDashboard: Boolean(ingest.crmUsed && ingest.crmUsed.trim()),
+          heavyCompliance: false,
+          complexRoleRouting: ingest.needsStaffRouting,
+          nonStandardIntegrations: false,
+          unlimitedCustomWork: false,
+        })
+      : [];
+
+  const needsEnterprise = packageKey === 'scale' && enterpriseReasons.length > 0;
+  const recommendedLabel = needsEnterprise ? 'Custom / Enterprise' : serviceCatalog[packageKey].name;
+
+  return {
+    packageKey,
+    recommendedLabel,
+    enterpriseReasons,
+    needsEnterprise,
+  };
 };
 
 export const buildQualificationReason = (
-  packageKey: PackageKey,
+  recommendation: IntakeRecommendation,
   monthlyLeakage: number,
   ingest: IngestData
 ): string => {
@@ -44,14 +81,19 @@ export const buildQualificationReason = (
     reasons.push(`estimated leakage ${monthlyLeakage.toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`);
   }
 
-  return `${serviceCatalog[packageKey].name} recommended because of ${reasons.join(', ')}.`;
+  if (recommendation.needsEnterprise) {
+    reasons.push(`enterprise triggers: ${recommendation.enterpriseReasons.join(', ')}`);
+    return `Custom / Enterprise required because ${reasons.join(', ')}. Internal enterprise floor starts from ${enterpriseSetupFloor}.`;
+  }
+
+  return `${serviceCatalog[recommendation.packageKey].name} recommended because of ${reasons.join(', ')}.`;
 };
 
 export const buildLeadCapturePayload = (appState: AppState) => {
   const monthlyLeakage = appState.calculatedMetrics?.monthlyLeakage ?? 0;
-  const packageKey = recommendPackageFromInputs(monthlyLeakage, appState.ingest);
-  const recommendedPackage = serviceCatalog[packageKey].name;
-  const qualificationReason = buildQualificationReason(packageKey, monthlyLeakage, appState.ingest);
+  const recommendation = recommendPackageFromInputs(monthlyLeakage, appState.ingest);
+  const recommendedPackage = recommendation.recommendedLabel;
+  const qualificationReason = buildQualificationReason(recommendation, monthlyLeakage, appState.ingest);
   const qualificationStatus = 'Qualified';
   const leadId = `fs_lead_${Date.now()}`;
   const createdAt = new Date().toISOString();
@@ -82,7 +124,7 @@ export const buildLeadCapturePayload = (appState: AppState) => {
     multiple_offers: appState.ingest.multipleOffers,
     needs_staff_routing: appState.ingest.needsStaffRouting,
     owner: '',
-    next_action: 'Review new inbound lead',
+    next_action: recommendation.needsEnterprise ? 'Review enterprise scope' : 'Review new inbound lead',
     notes: problemDetail
       ? `Primary problem: ${appState.ingest.primaryProblem}. ${problemDetail}`.trim()
       : `Primary problem: ${appState.ingest.primaryProblem}.`,
@@ -132,13 +174,15 @@ export const buildLeadCapturePayload = (appState: AppState) => {
     tenant_id: tenantId,
     event_name: 'website_intake_submitted',
     submitted_at: createdAt,
-    package_key: packageKey,
+    package_key: recommendation.packageKey,
+    package_label: recommendedPackage,
+    needs_enterprise_scope: recommendation.needsEnterprise,
   };
 
   return {
     recommendedPackage,
     qualificationReason,
-    packageKey,
+    packageKey: recommendation.packageKey,
     leadPayload,
     airtableFields,
     activityPayload,

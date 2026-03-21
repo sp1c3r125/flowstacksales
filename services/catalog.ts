@@ -17,6 +17,28 @@ export interface ServicePackage {
   proof: string[];
 }
 
+export interface ScaleScopeInput {
+  leadSources: number;
+  offers: number;
+  pipelines: number;
+  sequences: number;
+  multiLocation?: boolean;
+  customDashboard?: boolean;
+  heavyCompliance?: boolean;
+  complexRoleRouting?: boolean;
+  nonStandardIntegrations?: boolean;
+  unlimitedCustomWork?: boolean;
+}
+
+export const scaleBoundaries = {
+  leadSources: 4,
+  offers: 4,
+  pipelines: 5,
+  sequences: 4,
+} as const;
+
+export const enterpriseSetupFloor = '₱450,000+ setup';
+
 export const serviceCatalog: Record<PackageKey, ServicePackage> = {
   lite: {
     key: 'lite',
@@ -153,4 +175,26 @@ export const recommendPackage = (monthlyLeakage: number): PackageKey => {
   if (monthlyLeakage < 60000) return 'starter';
   if (monthlyLeakage < 150000) return 'growth';
   return 'scale';
+};
+
+export const getEnterpriseReasons = (input: ScaleScopeInput): string[] => {
+  const reasons: string[] = [];
+
+  if (input.leadSources > scaleBoundaries.leadSources) reasons.push(`More than ${scaleBoundaries.leadSources} lead sources`);
+  if (input.offers > scaleBoundaries.offers) reasons.push(`More than ${scaleBoundaries.offers} offers or booking outcomes`);
+  if (input.pipelines > scaleBoundaries.pipelines) reasons.push(`More than ${scaleBoundaries.pipelines} pipelines`);
+  if (input.sequences > scaleBoundaries.sequences) reasons.push(`More than ${scaleBoundaries.sequences} follow-up sequences`);
+
+  if (input.multiLocation) reasons.push('Multi-location deployment');
+  if (input.customDashboard) reasons.push('Custom dashboard / reporting layer');
+  if (input.heavyCompliance) reasons.push('Heavy compliance / approval requirements');
+  if (input.complexRoleRouting) reasons.push('Complex role-based routing');
+  if (input.nonStandardIntegrations) reasons.push('Non-standard integrations');
+  if (input.unlimitedCustomWork) reasons.push('Unlimited bespoke workflow request');
+
+  return reasons;
+};
+
+export const exceedsScaleBoundaries = (input: ScaleScopeInput): boolean => {
+  return getEnterpriseReasons(input).length > 0;
 };
