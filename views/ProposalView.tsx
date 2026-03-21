@@ -212,6 +212,16 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
+  function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function isNarrativeNoise(value: string) {
+    const normalized = (value || '').replace(/^•\s*/, '').trim();
+    if (!normalized) return true;
+    return /^[.·•,:;|/\\-]+$/.test(normalized);
+  }
+
   function stripMarkdown(text: string) {
     return (text || '')
       .replace(/\r\n/g, '\n')
@@ -230,13 +240,11 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
   function normalizeNarrativeText(text: string) {
     const cleaned = stripMarkdown(text || '');
+    const sectionPattern = new RegExp(`(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\\s*:`, 'gi');
 
     return cleaned
       .replace(/\s+•\s+/g, '\n• ')
-      .replace(
-        new RegExp(`(${SECTION_LABELS.map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\s*:`, 'g'),
-        '\n\n$1:\n'
-      )
+      .replace(sectionPattern, '\n\n$1:\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -253,11 +261,12 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const blocks: NarrativeBlock[] = [];
 
     for (const block of rawBlocks) {
-      const lines = block
+      const rawLines = block
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean);
 
+      const lines = rawLines.filter(line => !isNarrativeNoise(line));
       if (!lines.length) continue;
 
       if (
@@ -274,29 +283,42 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         continue;
       }
 
-      const bulletItems = lines
-        .filter(line => line.startsWith('• '))
-        .map(line => line.replace(/^•\s*/, '').trim())
-        .filter(Boolean);
-
-      const nonBulletLines = lines.filter(line => !line.startsWith('• '));
-      const normalizedHeading = nonBulletLines[0]?.replace(/:$/, '').trim() || '';
-      const isSectionHeading = SECTION_LABELS.some(
-        (label) => label.toLowerCase() === normalizedHeading.toLowerCase()
+      const firstLineMatch = lines[0].match(
+        new RegExp(`^(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\s*:\s*(.*)$`, 'i')
       );
 
-      if (nonBulletLines.length === 1 && (/:$/.test(nonBulletLines[0]) || isSectionHeading)) {
-        blocks.push({ type: 'heading', text: normalizedHeading });
-        if (bulletItems.length) {
-          blocks.push({ type: 'bullets', items: bulletItems });
+      if (firstLineMatch) {
+        const [, sectionLabel, introText] = firstLineMatch;
+        blocks.push({ type: 'heading', text: sectionLabel.trim() });
+
+        const normalizedIntro = (introText || '').trim();
+        if (normalizedIntro && !isNarrativeNoise(normalizedIntro)) {
+          blocks.push({ type: 'paragraph', text: normalizedIntro });
+        }
+
+        const remainingItems = lines
+          .slice(1)
+          .map(line => line.replace(/^•\s*/, '').trim())
+          .filter(item => item && !isNarrativeNoise(item));
+
+        if (remainingItems.length) {
+          blocks.push({ type: 'bullets', items: remainingItems });
         }
         continue;
       }
 
-      if (bulletItems.length && nonBulletLines.length > 1 && isSectionHeading) {
-        blocks.push({ type: 'heading', text: normalizedHeading });
-        blocks.push({ type: 'paragraph', text: nonBulletLines.slice(1).join(' ') });
-        blocks.push({ type: 'bullets', items: bulletItems });
+      const bulletItems = lines
+        .filter(line => line.startsWith('• '))
+        .map(line => line.replace(/^•\s*/, '').trim())
+        .filter(item => item && !isNarrativeNoise(item));
+
+      const nonBulletLines = lines.filter(line => !line.startsWith('• ') && !isNarrativeNoise(line));
+
+      if (nonBulletLines.length === 1 && /:$/.test(nonBulletLines[0])) {
+        blocks.push({ type: 'heading', text: nonBulletLines[0].replace(/:$/, '') });
+        if (bulletItems.length) {
+          blocks.push({ type: 'bullets', items: bulletItems });
+        }
         continue;
       }
 
@@ -305,13 +327,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
         continue;
       }
 
-      if (bulletItems.length && isSectionHeading) {
-        blocks.push({ type: 'heading', text: normalizedHeading });
-        blocks.push({ type: 'bullets', items: bulletItems });
-        continue;
+      const paragraphText = nonBulletLines.join(' ').trim();
+      if (paragraphText && !isNarrativeNoise(paragraphText)) {
+        blocks.push({ type: 'paragraph', text: paragraphText });
       }
-
-      blocks.push({ type: 'paragraph', text: lines.join(' ') });
     }
 
     return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
