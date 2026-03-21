@@ -42,6 +42,10 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
   const { monthlyLeakage, annualLeakage } = appState.calculatedMetrics || { monthlyLeakage: 0, annualLeakage: 0 };
   const leadCapture = useMemo(() => buildLeadCapturePayload(appState), [appState]);
   const recommended = useMemo(() => serviceCatalog[leadCapture.packageKey], [leadCapture.packageKey]);
+  const normalizedQualificationReason = useMemo(
+    () => normalizePdfSafeText(leadCapture.qualificationReason || '-'),
+    [leadCapture.qualificationReason]
+  );
   const visibleProposalBlocks = useMemo(
     () => buildNarrativeBlocks(streamingText || proposal),
     [streamingText, proposal]
@@ -212,18 +216,33 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     return response.json().catch(() => null);
   };
 
-  function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
 
-  function isNarrativeNoise(value: string) {
-    const normalized = (value || '').replace(/^•\s*/, '').trim();
-    if (!normalized) return true;
-    return /^[.·•,:;|/\\-]+$/.test(normalized);
-  }
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  function stripMarkdown(text: string) {
-    return (text || '')
+function isNarrativeNoise(value: string) {
+  const normalized = (value || '').replace(/^•\s*/, '').trim();
+  if (!normalized) return true;
+  return /^[.·•,:;|/\\-]+$/.test(normalized);
+}
+
+function normalizePdfSafeText(value: string) {
+  return (value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u00A0]/g, ' ')
+    .replace(/₱/g, 'PHP ')
+    .replace(/±/g, 'PHP ')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/–|—/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripMarkdown(text: string) {
+  return normalizePdfSafeText(
+    (text || '')
       .replace(/\r\n/g, '\n')
       .replace(/^#{1,6}\s*/gm, '')
       .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -235,108 +254,120 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
       .replace(/^>\s?/gm, '')
       .replace(/\n{3,}/g, '\n\n')
-      .trim();
+  );
+}
+
+function normalizeNarrativeText(text: string) {
+  const cleaned = stripMarkdown(text || '');
+  const labelsPattern = SECTION_LABELS.map(escapeRegExp).join('|');
+
+  return cleaned
+    .replace(/\s+•\s+/g, '\n• ')
+    .replace(new RegExp(`\\s+(${labelsPattern})\\s*:`, 'gi'), '\n\n$1:\n')
+    .replace(new RegExp(`(?<=[.!?])\\s+(${labelsPattern})(?=\\s|:)`, 'gi'), '\n\n$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function splitSectionBody(section: string, body: string) {
+  const normalized = normalizePdfSafeText(body)
+    .replace(/\s+•\s+/g, '\n• ')
+    .replace(/\s+(?=Module\s+\d+:)/gi, '\n• ')
+    .replace(/\s+(?=(Monthly Leakage:|Annual Leakage:|Potential loss))/gi, '\n• ')
+    .replace(/\s+(?=(Schedule|Develop|Begin|Engage|Conduct|Monitor)\b)/gi, '\n• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  const rawLines = normalized
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !isNarrativeNoise(line));
+
+  const introParts: string[] = [];
+  const bulletItems: string[] = [];
+
+  rawLines.forEach((line) => {
+    const cleanLine = line.replace(/^•\s*/, '').trim();
+    if (!cleanLine || isNarrativeNoise(cleanLine)) return;
+
+    const shouldForceBullet =
+      /^Module\s+\d+:/i.test(cleanLine) ||
+      /^(Monthly Leakage:|Annual Leakage:|Potential loss)/i.test(cleanLine) ||
+      /^(Schedule|Develop|Begin|Engage|Conduct|Monitor)\b/i.test(cleanLine) ||
+      /^(Automated|AI-powered|Real-time|Streamline|Strengthen|Leverage|Track|Proactively)\b/i.test(cleanLine);
+
+    if (line.startsWith('• ') || shouldForceBullet) {
+      bulletItems.push(cleanLine);
+    } else {
+      introParts.push(cleanLine);
+    }
+  });
+
+  if (section === 'Revenue at Risk' && !bulletItems.length && introParts.length > 1) {
+    return {
+      intro: '',
+      items: introParts.filter((item) => !isNarrativeNoise(item)),
+    };
   }
 
-  function normalizeNarrativeText(text: string) {
-    const cleaned = stripMarkdown(text || '');
-    const sectionPattern = new RegExp(`(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\\s*:`, 'gi');
-
-    return cleaned
-      .replace(/\s+•\s+/g, '\n• ')
-      .replace(sectionPattern, '\n\n$1:\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+  if (section === 'Current Bottleneck' && !bulletItems.length) {
+    return {
+      intro: introParts.join(' ').trim(),
+      items: [],
+    };
   }
 
-  function buildNarrativeBlocks(text: string): NarrativeBlock[] {
-    const normalized = normalizeNarrativeText(text);
-    if (!normalized) return [{ type: 'paragraph', text: '-' }];
+  return {
+    intro: introParts.join(' ').trim(),
+    items: bulletItems.filter((item) => !isNarrativeNoise(item)),
+  };
+}
 
-    const rawBlocks = normalized
-      .split(/\n\n+/)
-      .map(block => block.trim())
-      .filter(Boolean);
+function buildNarrativeBlocks(text: string): NarrativeBlock[] {
+  const normalized = normalizeNarrativeText(text);
+  if (!normalized) return [{ type: 'paragraph', text: '-' }];
 
-    const blocks: NarrativeBlock[] = [];
+  const labelPattern = new RegExp(`(^|\\n\\n)(${SECTION_LABELS.map(escapeRegExp).join('|')})(?::)?`, 'gim');
+  const matches = Array.from(normalized.matchAll(labelPattern));
 
-    for (const block of rawBlocks) {
-      const rawLines = block
-        .split('\n')
-        .map(line => line.trim())
-        .filter(Boolean);
+  if (!matches.length) {
+    const fallback = normalized
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line) => !isNarrativeNoise(line))
+      .join(' ');
 
-      const lines = rawLines.filter(line => !isNarrativeNoise(line));
-      if (!lines.length) continue;
+    return fallback ? [{ type: 'paragraph', text: fallback }] : [{ type: 'paragraph', text: '-' }];
+  }
 
-      if (
-        lines.length === 1 &&
-        /^[A-Z][A-Za-z0-9\s/&():“”"'-]{1,80}$/.test(lines[0]) &&
-        !lines[0].startsWith('•')
-      ) {
-        blocks.push({ type: 'heading', text: lines[0] });
-        continue;
-      }
+  const blocks: NarrativeBlock[] = [];
 
-      if (lines.length === 1 && /:$/.test(lines[0])) {
-        blocks.push({ type: 'heading', text: lines[0].replace(/:$/, '') });
-        continue;
-      }
+  matches.forEach((match, index) => {
+    const sectionLabel = match[2].trim();
+    const bodyStart = (match.index || 0) + match[0].length;
+    const nextIndex = index + 1 < matches.length ? (matches[index + 1].index || normalized.length) : normalized.length;
+    const rawBody = normalized.slice(bodyStart, nextIndex).trim();
 
-      const firstLineMatch = lines[0].match(
-        new RegExp(`^(${SECTION_LABELS.map(label => escapeRegExp(label)).join('|')})\s*:\s*(.*)$`, 'i')
-      );
+    blocks.push({ type: 'heading', text: sectionLabel });
 
-      if (firstLineMatch) {
-        const [, sectionLabel, introText] = firstLineMatch;
-        blocks.push({ type: 'heading', text: sectionLabel.trim() });
+    const { intro, items } = splitSectionBody(sectionLabel, rawBody);
 
-        const normalizedIntro = (introText || '').trim();
-        if (normalizedIntro && !isNarrativeNoise(normalizedIntro)) {
-          blocks.push({ type: 'paragraph', text: normalizedIntro });
-        }
-
-        const remainingItems = lines
-          .slice(1)
-          .map(line => line.replace(/^•\s*/, '').trim())
-          .filter(item => item && !isNarrativeNoise(item));
-
-        if (remainingItems.length) {
-          blocks.push({ type: 'bullets', items: remainingItems });
-        }
-        continue;
-      }
-
-      const bulletItems = lines
-        .filter(line => line.startsWith('• '))
-        .map(line => line.replace(/^•\s*/, '').trim())
-        .filter(item => item && !isNarrativeNoise(item));
-
-      const nonBulletLines = lines.filter(line => !line.startsWith('• ') && !isNarrativeNoise(line));
-
-      if (nonBulletLines.length === 1 && /:$/.test(nonBulletLines[0])) {
-        blocks.push({ type: 'heading', text: nonBulletLines[0].replace(/:$/, '') });
-        if (bulletItems.length) {
-          blocks.push({ type: 'bullets', items: bulletItems });
-        }
-        continue;
-      }
-
-      if (bulletItems.length && bulletItems.length === lines.length) {
-        blocks.push({ type: 'bullets', items: bulletItems });
-        continue;
-      }
-
-      const paragraphText = nonBulletLines.join(' ').trim();
-      if (paragraphText && !isNarrativeNoise(paragraphText)) {
-        blocks.push({ type: 'paragraph', text: paragraphText });
-      }
+    if (intro && !isNarrativeNoise(intro)) {
+      blocks.push({ type: 'paragraph', text: intro });
     }
 
-    return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
-  }
+    if (items.length) {
+      blocks.push({ type: 'bullets', items });
+    }
+  });
 
-  const drawVerticalGradient = (
+  return blocks.length ? blocks : [{ type: 'paragraph', text: '-' }];
+}
+
+const drawVerticalGradient = (
+
     doc: jsPDF,
     x: number,
     y: number,
@@ -388,7 +419,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       fontStyle = 'normal',
     } = options || {};
 
-    const safe = (text || '-').trim() || '-';
+    const safe = normalizePdfSafeText((text || '-').trim() || '-');
     const lines = doc.splitTextToSize(safe, maxWidth);
 
     doc.setCharSpace?.(0);
@@ -410,7 +441,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     let bodyHeight = 0;
 
     items.forEach((item) => {
-      const normalized = (item || '-').replace(/^•\s*/, '').trim() || '-';
+      const normalized = normalizePdfSafeText((item || '-').replace(/^•\s*/, '').trim() || '-');
       const lines = doc.splitTextToSize(normalized, bodyWidth);
       bodyHeight += Math.max(1, lines.length) * lineHeight + bulletGap;
     });
@@ -432,7 +463,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const lineHeight = 14;
     const bulletGap = 4;
     const bodyWidth = width - padding * 2 - 12;
-    const normalizedItems = items.map((item) => (item || '-').replace(/^•\s*/, '').trim() || '-');
+    const normalizedItems = items.map((item) => normalizePdfSafeText((item || '-').replace(/^•\s*/, '').trim() || '-'));
     const height = forcedHeight ?? getBulletedCardHeight(doc, title, items, width);
 
     doc.setFillColor(255, 255, 255);
@@ -487,9 +518,9 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const rowValueWidth = innerWidth - rowLabelWidth - 12;
     let cy = y + pad;
 
-    const taglineLines = doc.splitTextToSize(data.tagline || '-', innerWidth);
-    const bottleneckLines = doc.splitTextToSize(data.bottleneck || '-', rowValueWidth);
-    const reasonLines = doc.splitTextToSize(data.qualificationReason || '-', rowValueWidth);
+    const taglineLines = doc.splitTextToSize(normalizePdfSafeText(data.tagline || '-'), innerWidth);
+    const bottleneckLines = doc.splitTextToSize(normalizePdfSafeText(data.bottleneck || '-'), rowValueWidth);
+    const reasonLines = doc.splitTextToSize(normalizePdfSafeText(data.qualificationReason || '-'), rowValueWidth);
 
     const rowHeight = (lines: string[]) => Math.max(16, lines.length * 14);
     const cardHeight =
@@ -608,7 +639,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     const whyPackageItems = [
       `Severity: ${severity}`,
       `Main bottleneck: ${bottleneck}`,
-      `Qualification reason: ${leadCapture.qualificationReason || '-'}`,
+      `Qualification reason: ${normalizedQualificationReason || '-'}`,
     ];
 
     const operationalSignalItems = [
@@ -625,7 +656,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
       tagline: recommended.tagline || '-',
       severity,
       bottleneck,
-      qualificationReason: leadCapture.qualificationReason || '-',
+      qualificationReason: normalizedQualificationReason || '-',
     });
 
     y += summaryHeight + 18;
@@ -720,7 +751,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
 
       if (block.type === 'bullets') {
         block.items.forEach((item) => {
-          const bulletWrapped = doc.splitTextToSize(item, contentWidth - 14);
+          const bulletWrapped = doc.splitTextToSize(normalizePdfSafeText(item), contentWidth - 14);
           ensurePageSpace(Math.max(18, bulletWrapped.length * 14 + 6));
 
           doc.setCharSpace?.(0);
@@ -846,7 +877,7 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
             </div>
             <div>
               <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
-              <div className="text-sm text-slate-300">{leadCapture.qualificationReason}</div>
+              <div className="text-sm leading-7 tracking-normal break-words whitespace-pre-wrap text-slate-300">{normalizedQualificationReason}</div>
             </div>
           </div>
         </BentoCard>
