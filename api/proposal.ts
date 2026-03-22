@@ -53,7 +53,7 @@ function safeJsonParse<T>(v: any): T | null {
 
 function money(n: number | undefined) {
   const x = Number(n || 0);
-  return x > 0 ? `$${x.toLocaleString()}` : "N/A";
+  return x > 0 ? `₱${x.toLocaleString("en-PH", { maximumFractionDigits: 0 })}` : "N/A";
 }
 
 function extractRetryAfterSeconds(msg: string | undefined): number | null {
@@ -213,6 +213,7 @@ Generate a concise Markdown diagnostic report.
 Hard rules:
 - Keep under ~900–1200 tokens.
 - No filler. Bullets > paragraphs.
+- Use Philippine Peso formatting only. Never use USD or "$".
 - MUST include these exact lines somewhere:
   Monthly Leakage: ${money(monthly)}
   Annual Leakage: ${money(annual)}
