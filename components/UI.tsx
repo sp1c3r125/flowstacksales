@@ -11,7 +11,7 @@ const labelClass =
   'text-sm font-mono uppercase tracking-wider font-bold text-cyan-100/68';
 
 const fieldShellClass =
-  'w-full rounded-lg border border-blue-400/16 bg-[#030b1d]/95 px-4 py-3 text-slate-100 font-mono text-sm outline-none transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_0_0_1px_rgba(37,99,235,0.03)] focus:border-cyan-300/55 focus:shadow-[0_0_0_1px_rgba(34,211,238,0.35),0_0_24px_rgba(34,211,238,0.08)] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-lg border border-blue-300/16 bg-[linear-gradient(180deg,rgba(6,17,38,0.98)_0%,rgba(3,11,29,0.98)_100%)] px-4 py-3 text-slate-100 font-mono text-sm outline-none transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_0_0_1px_rgba(37,99,235,0.03)] focus:border-cyan-300/55 focus:shadow-[0_0_0_1px_rgba(34,211,238,0.35),0_0_24px_rgba(34,211,238,0.08)] disabled:cursor-not-allowed disabled:opacity-50';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -131,7 +131,7 @@ export const RangeControl: React.FC<RangeControlProps> = ({
     <div className="group w-full space-y-3">
       <div className="flex items-end justify-between">
         <label className={labelClass}>{label}</label>
-        <div className="flex items-center gap-1 rounded border border-blue-400/16 bg-[#030b1d]/80 px-2 py-1 transition-all focus-within:border-cyan-300/55 focus-within:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+        <div className="flex items-center gap-1 rounded border border-blue-300/16 bg-[linear-gradient(180deg,rgba(6,17,38,0.94)_0%,rgba(3,11,29,0.96)_100%)] px-2 py-1 transition-all focus-within:border-cyan-300/55 focus-within:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
           {prefix && <span className="select-none font-mono text-sm text-cyan-200/42">{prefix}</span>}
           <input
             type="number"
@@ -147,8 +147,11 @@ export const RangeControl: React.FC<RangeControlProps> = ({
       </div>
 
       <div className="relative flex h-6 items-center">
-        <div className="absolute h-2 w-full overflow-hidden rounded-full bg-blue-950/90 ring-1 ring-blue-400/12">
-          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-100 ease-out" style={{ width: `${percentage}%` }} />
+        <div className="absolute h-2 w-full overflow-hidden rounded-full bg-blue-950/90 ring-1 ring-blue-300/12">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-100 ease-out"
+            style={{ width: `${percentage}%` }}
+          />
         </div>
 
         <input
@@ -187,9 +190,9 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const variants = {
     primary:
-      'border border-blue-400/30 bg-gradient-to-b from-blue-500/22 to-cyan-400/12 text-white shadow-[0_0_22px_rgba(37,99,235,0.18)] hover:border-cyan-300/55 hover:from-blue-400/28 hover:to-cyan-300/16',
+      'border border-blue-300/28 bg-gradient-to-b from-blue-500/24 to-cyan-400/14 text-white shadow-[0_0_22px_rgba(37,99,235,0.18)] hover:border-cyan-300/55 hover:from-blue-400/30 hover:to-cyan-300/18',
     secondary:
-      'border border-blue-400/16 bg-[#081327] text-slate-100 shadow-[0_0_0_1px_rgba(37,99,235,0.03)] hover:border-blue-300/30 hover:bg-[#0b1730]',
+      'border border-blue-300/16 bg-[linear-gradient(180deg,rgba(10,24,47,0.94)_0%,rgba(4,12,29,0.96)_100%)] text-slate-100 shadow-[0_0_0_1px_rgba(37,99,235,0.03)] hover:border-blue-200/28 hover:bg-[linear-gradient(180deg,rgba(12,28,54,0.96)_0%,rgba(7,18,39,0.98)_100%)]',
     ghost:
       'bg-transparent text-cyan-100/68 hover:bg-blue-500/8 hover:text-cyan-50',
     danger:
