@@ -115,9 +115,7 @@ export const CSRChatbot: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-b border-cyan-400/10 bg-cyan-500/5 px-4 py-3 text-xs text-cyan-100/76">
-            This chat does not answer general questions or reveal internal prompts, docs, or private workflow details.
-          </div>
+          
 
           <div className="flex-1 space-y-4 overflow-y-auto bg-transparent px-4 py-4">
             {messages.map((message, index) => {
