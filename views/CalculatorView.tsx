@@ -3,8 +3,17 @@ import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Button, RangeControl } from '../components/UI';
 import { CalculatorData, CalculatorSchema } from '../types';
 import { calculateMonthlyLeakage, calculateAnnualLeakage, formatCurrency } from '../utils/calculations';
-import { ArrowRight, Activity, TrendingDown, Layers, CheckCircle2, CalendarCheck2, ShieldCheck } from 'lucide-react';
-import { packageOrder, serviceCatalog, packageComparisonRows, recommendPackage, proofExamples, rolloutSteps, onboardingChecklist } from '../services/catalog';
+import { ArrowRight, Activity, TrendingDown, Layers, CheckCircle2, CalendarCheck2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import {
+  packageOrder,
+  serviceCatalog,
+  packageComparisonRows,
+  recommendPackage,
+  proofExamples,
+  rolloutSteps,
+  onboardingChecklist,
+  scaleBoundaries,
+} from '../services/catalog';
 
 interface Props {
   data: CalculatorData;
@@ -16,9 +25,14 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof CalculatorData, string>>>({});
   const [localData, setLocalData] = useState<CalculatorData>(data);
 
-  const monthlyLeakage = useMemo(() => calculateMonthlyLeakage(localData.volume, localData.value, localData.rate), [localData.volume, localData.value, localData.rate]);
+  const monthlyLeakage = useMemo(
+    () => calculateMonthlyLeakage(localData.volume, localData.value, localData.rate),
+    [localData.volume, localData.value, localData.rate]
+  );
   const annualLeakage = useMemo(() => calculateAnnualLeakage(monthlyLeakage), [monthlyLeakage]);
-  const recommended = useMemo(() => serviceCatalog[recommendPackage(monthlyLeakage)], [monthlyLeakage]);
+  const recommendedKey = useMemo(() => recommendPackage(monthlyLeakage), [monthlyLeakage]);
+  const recommended = useMemo(() => serviceCatalog[recommendedKey], [recommendedKey]);
+  const isScaleCandidate = recommendedKey === 'scale';
 
   const handleChange = (field: keyof CalculatorData, value: number) => {
     if (isNaN(value)) return;
@@ -54,15 +68,43 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
           Recover missed inquiries and <span className="text-blue-500">book more clients</span>
         </h1>
         <p className="text-slate-400 text-base md:text-lg max-w-3xl mx-auto">
-          Flowstack installs approved automation systems for lead capture, follow-up, booking, routing, and reporting. Start by sizing the leak in your current process.
+          Flowstack installs approved automation systems for lead capture, follow-up, booking, routing, and reporting.
+          Start by sizing the leak in your current process.
         </p>
       </div>
 
       <BentoGrid>
         <BentoCard title="Business inputs" className="col-span-12 md:col-span-5 flex flex-col justify-center space-y-8">
-          <RangeControl label="Messages / leads per month" value={localData.volume} onChange={(val) => handleChange('volume', val)} min={1} max={500} step={1} prefix="#" error={errors.volume} />
-          <RangeControl label="Average deal value" value={localData.value} onChange={(val) => handleChange('value', val)} min={1000} max={50000} step={500} prefix="₱" error={errors.value} />
-          <RangeControl label="Current close or booking rate" value={localData.rate} onChange={(val) => handleChange('rate', val)} min={0} max={60} step={1} suffix="%" error={errors.rate} />
+          <RangeControl
+            label="Messages / leads per month"
+            value={localData.volume}
+            onChange={(val) => handleChange('volume', val)}
+            min={1}
+            max={500}
+            step={1}
+            prefix="#"
+            error={errors.volume}
+          />
+          <RangeControl
+            label="Average deal value"
+            value={localData.value}
+            onChange={(val) => handleChange('value', val)}
+            min={1000}
+            max={50000}
+            step={500}
+            prefix="₱"
+            error={errors.value}
+          />
+          <RangeControl
+            label="Current close or booking rate"
+            value={localData.rate}
+            onChange={(val) => handleChange('rate', val)}
+            min={0}
+            max={60}
+            step={1}
+            suffix="%"
+            error={errors.rate}
+          />
         </BentoCard>
 
         <BentoCard title="Revenue opportunity" className="col-span-12 md:col-span-7 bg-slate-900/80" accent="blue">
@@ -85,9 +127,14 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
               <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
               <div className="absolute top-4 right-4 text-red-500 animate-pulse-slow"><TrendingDown size={24} /></div>
               <div className="relative z-10">
-                <div className="text-sm text-red-400 font-bold font-mono mb-2 flex items-center gap-2"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />Estimated annual leakage</div>
+                <div className="text-sm text-red-400 font-bold font-mono mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  Estimated annual leakage
+                </div>
                 <div className="text-4xl md:text-5xl font-bold text-white tracking-tighter tabular-nums">{formatCurrency(annualLeakage)}</div>
-                <div className="text-xs text-slate-400 mt-2 font-mono">Used to recommend the right package, not oversell the biggest one</div>
+                <div className="text-xs text-slate-400 mt-2 font-mono">
+                  Used to recommend the right package, not oversell the biggest one
+                </div>
               </div>
             </div>
           </div>
@@ -99,15 +146,39 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
               <div className="text-2xl font-bold text-white">{recommended.name}</div>
               <div className="text-sm text-emerald-400 mt-1">{recommended.tagline}</div>
             </div>
+
             <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
               <div className="text-xs font-mono uppercase text-slate-500 mb-2">Pricing</div>
               <div className="text-white font-semibold">{recommended.setup}</div>
               <div className="text-slate-300">{recommended.monthly}</div>
               {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
             </div>
+
+            {isScaleCandidate ? (
+              <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                <div className="text-xs font-mono uppercase text-amber-300 mb-2 flex items-center gap-2">
+                  <AlertTriangle size={14} />
+                  Scale boundary rule
+                </div>
+                <div className="text-sm text-slate-300 leading-6">
+                  Scale is the highest standard package. If your intake shows scope beyond these bounded limits,
+                  the recommendation moves to <span className="text-white font-semibold">Custom / Enterprise</span>.
+                </div>
+                <ul className="mt-3 space-y-1 text-xs text-slate-400">
+                  <li>Up to {scaleBoundaries.leadSources} lead sources</li>
+                  <li>Up to {scaleBoundaries.offers} offers or booking outcomes</li>
+                  <li>Up to {scaleBoundaries.pipelines} pipelines</li>
+                  <li>Up to {scaleBoundaries.sequences} follow-up sequences</li>
+                </ul>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               {recommended.bestFor.map(item => (
-                <div key={item} className="flex items-start gap-2 text-sm text-slate-300"><CheckCircle2 size={16} className="text-emerald-400 mt-0.5 shrink-0" />{item}</div>
+                <div key={item} className="flex items-start gap-2 text-sm text-slate-300">
+                  <CheckCircle2 size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+                  {item}
+                </div>
               ))}
             </div>
           </div>
@@ -156,7 +227,9 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
             ))}
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 flex gap-3 items-start">
               <CalendarCheck2 className="text-emerald-400 shrink-0 mt-0.5" size={18} />
-              <div className="text-sm text-slate-300">The goal is not just to explain packages. It is to move you into a clean setup and launch path.</div>
+              <div className="text-sm text-slate-300">
+                The goal is not just to explain packages. It is to move you into a clean setup and launch path.
+              </div>
             </div>
           </div>
         </BentoCard>

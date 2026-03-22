@@ -30,3 +30,6 @@ dist-ssr
 
 .vercel
 .env*.local
+
+.backup-ingest-integration-20260318-165319/
+manual-backup/
