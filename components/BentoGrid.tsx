@@ -30,38 +30,38 @@ export const BentoCard: React.FC<{
   accent?: 'blue' | 'green' | 'red' | 'default';
 }> = ({ children, className, title, headerAction, accent = 'default' }) => {
   const borderColors = {
-    default: 'border-slate-800',
-    blue: 'border-blue-500/50',
-    green: 'border-emerald-500/50',
-    red: 'border-red-500/50',
+    default: 'border-blue-400/16',
+    blue: 'border-blue-400/28',
+    green: 'border-emerald-400/30',
+    red: 'border-red-400/28',
   };
 
   const bgGlow = {
-    default: '',
-    blue: 'shadow-[0_0_15px_-3px_rgba(59,130,246,0.1)]',
-    green: 'shadow-[0_0_15px_-3px_rgba(16,185,129,0.1)]',
-    red: 'shadow-[0_0_15px_-3px_rgba(239,68,68,0.1)]',
+    default: 'shadow-[0_0_0_1px_rgba(59,130,246,0.05),0_0_24px_rgba(37,99,235,0.08)]',
+    blue: 'shadow-[0_0_0_1px_rgba(59,130,246,0.07),0_0_28px_rgba(59,130,246,0.12)]',
+    green: 'shadow-[0_0_0_1px_rgba(16,185,129,0.05),0_0_28px_rgba(16,185,129,0.11)]',
+    red: 'shadow-[0_0_0_1px_rgba(248,113,113,0.05),0_0_24px_rgba(239,68,68,0.10)]',
   };
 
   return (
     <div
       className={cn(
-        "bg-slate-900/50 backdrop-blur-sm border rounded-xl overflow-hidden flex flex-col relative group transition-all duration-300",
+        "bg-[#061126]/78 backdrop-blur-md border rounded-xl overflow-hidden flex flex-col relative group transition-all duration-300",
         borderColors[accent],
         bgGlow[accent],
         className
       )}
     >
       {/* Tech line decorations */}
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent opacity-50" />
-      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent opacity-50" />
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-300/45 to-transparent opacity-50" />
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-300/45 to-transparent opacity-50" />
       
       {(title || headerAction) && (
-        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+        <div className="px-6 py-4 border-b border-blue-400/12 flex justify-between items-center bg-[#030b1d]/88">
           {title && (
-            <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            <h3 className="text-xs font-mono uppercase tracking-widest text-cyan-100/72 flex items-center gap-2">
               <span className={cn("w-2 h-2 rounded-full", {
-                'bg-slate-600': accent === 'default',
+                'bg-cyan-300/60': accent === 'default',
                 'bg-blue-500': accent === 'blue',
                 'bg-emerald-500': accent === 'green',
                 'bg-red-500': accent === 'red',
