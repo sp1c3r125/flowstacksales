@@ -1,9 +1,9 @@
-﻿import type { VercelRequest, VercelResponse } from "@vercel/node";
+﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "2mb",
+      sizeLimit: '2mb',
     },
   },
 };
@@ -53,100 +53,158 @@ type MetadataPayload = {
   event_name: string;
   submitted_at: string;
   package_key?: string;
+  package_label?: string;
+  needs_enterprise_scope?: boolean;
+};
+
+type NormalizedPayload = {
+  proposalMarkdown: string;
+  recommendedPackage: string;
+  qualificationReason: string;
+  leadPayload: LeadPayload;
+  airtableFields: Record<string, unknown>;
+  activityPayload: ActivityPayload;
+  metadata: MetadataPayload;
 };
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function normalizeLeadPayload(body: any) {
+function joinLeadSources(leadSources: string[] | undefined) {
+  return Array.isArray(leadSources) ? leadSources.filter(Boolean).join(', ') : '';
+}
+
+function buildSalesStage(recommendedPackage: string, qualificationStatus: string) {
+  if (recommendedPackage === 'Custom / Enterprise') return 'Needs Enterprise Review';
+  if (qualificationStatus) return qualificationStatus;
+  return 'Qualified';
+}
+
+function buildAirtableCompatibilityFields(leadPayload: LeadPayload) {
+  const salesStage = buildSalesStage(
+    leadPayload.recommended_package || '',
+    leadPayload.qualification_status || 'Qualified'
+  );
+
+  return {
+    lead_id: leadPayload.lead_id,
+    created_at: leadPayload.created_at,
+    name: leadPayload.name,
+    email: leadPayload.email,
+    phone: leadPayload.phone || '',
+    company: leadPayload.company,
+    source: leadPayload.source,
+    service_need: leadPayload.service_need,
+    package_interest: leadPayload.package_interest || '',
+    recommended_package: leadPayload.recommended_package || '',
+    qualification_status: leadPayload.qualification_status || 'Qualified',
+    qualification_reason: leadPayload.qualification_reason || '',
+    crm_used: leadPayload.crm_used || '',
+    booking_link: leadPayload.booking_link || '',
+    current_problem: leadPayload.current_problem || '',
+    messages_per_day: Number(leadPayload.messages_per_day || 0),
+    needs_booking: Boolean(leadPayload.needs_booking),
+    multiple_offers: Boolean(leadPayload.multiple_offers),
+    needs_staff_routing: Boolean(leadPayload.needs_staff_routing),
+    owner: leadPayload.owner || '',
+    next_action: leadPayload.next_action || '',
+    notes: leadPayload.notes || '',
+    niche: leadPayload.niche || '',
+    lead_sources: joinLeadSources(leadPayload.lead_sources),
+
+    'Lead ID': leadPayload.lead_id,
+    'Created At': leadPayload.created_at,
+    'Name': leadPayload.name,
+    'Email': leadPayload.email,
+    'Phone': leadPayload.phone || '',
+    'Company': leadPayload.company,
+    'Source': leadPayload.source,
+    'Lead Sources': joinLeadSources(leadPayload.lead_sources),
+    'Niche': leadPayload.niche || '',
+    'Service Need': leadPayload.service_need,
+    'Package Interest': leadPayload.package_interest || '',
+    'Recommended Package': leadPayload.recommended_package || '',
+    'Qualification Status': leadPayload.qualification_status || 'Qualified',
+    'Qualification Reason': leadPayload.qualification_reason || '',
+    'Sales Stage': salesStage,
+    'Sales Stage (Derived)': salesStage,
+    'Current Problem': leadPayload.current_problem || '',
+    'CRM Used': leadPayload.crm_used || '',
+    'Booking Link': leadPayload.booking_link || '',
+    'Messages Per Day': Number(leadPayload.messages_per_day || 0),
+    'Needs Booking': Boolean(leadPayload.needs_booking),
+    'Multiple Offers': Boolean(leadPayload.multiple_offers),
+    'Needs Staff Routing': Boolean(leadPayload.needs_staff_routing),
+    'Owner': leadPayload.owner || '',
+    'Next Action': leadPayload.next_action || '',
+    'Notes': leadPayload.notes || '',
+  };
+}
+
+function normalizeLeadPayload(body: any): NormalizedPayload {
   const timestamp = nowIso();
   const leadId = body?.leadPayload?.lead_id || body?.lead_id || `fs_lead_${Date.now()}`;
 
   const leadPayload: LeadPayload = body?.leadPayload || {
     lead_id: leadId,
     created_at: body?.created_at || timestamp,
-    name: body?.name || body?.ingest?.contactName || "",
-    email: body?.email || body?.ingest?.contactEmail || "",
-    phone: body?.phone || body?.ingest?.phone || "",
-    company: body?.company || body?.ingest?.agencyName || "",
-    source: body?.source || (Array.isArray(body?.leadSources) ? body.leadSources.join(", ") : "") || "Website",
+    name: body?.name || body?.ingest?.contactName || '',
+    email: body?.email || body?.ingest?.contactEmail || '',
+    phone: body?.phone || body?.ingest?.phone || '',
+    company: body?.company || body?.ingest?.agencyName || '',
+    source: body?.source || (Array.isArray(body?.leadSources) ? body.leadSources.join(', ') : '') || 'Website',
     lead_sources: body?.lead_sources || body?.leadSources || body?.ingest?.leadSources || [],
-    niche: body?.niche || body?.ingest?.niche || "",
-    service_need: body?.service_need || body?.primaryProblem || body?.ingest?.primaryProblem || "",
-    package_interest: body?.package_interest || "",
-    recommended_package: body?.recommended_package || body?.recommendedPackage || "",
-    qualification_status: body?.qualification_status || "Qualified",
-    qualification_reason: body?.qualification_reason || body?.qualificationReason || "",
-    crm_used: body?.crm_used || body?.crmUsed || body?.ingest?.crmUsed || "",
-    booking_link: body?.booking_link || body?.bookingLink || body?.ingest?.bookingLink || "",
-    current_problem: body?.current_problem || body?.problemDetail || body?.ingest?.problemDetail || "",
-    messages_per_day: body?.messages_per_day || body?.messagesPerDay || body?.ingest?.messagesPerDay || 0,
+    niche: body?.niche || body?.ingest?.niche || '',
+    service_need: body?.service_need || body?.primaryProblem || body?.ingest?.primaryProblem || '',
+    package_interest: body?.package_interest || '',
+    recommended_package: body?.recommended_package || body?.recommendedPackage || '',
+    qualification_status: body?.qualification_status || 'Qualified',
+    qualification_reason: body?.qualification_reason || body?.qualificationReason || '',
+    crm_used: body?.crm_used || body?.crmUsed || body?.ingest?.crmUsed || '',
+    booking_link: body?.booking_link || body?.bookingLink || body?.ingest?.bookingLink || '',
+    current_problem: body?.current_problem || body?.problemDetail || body?.ingest?.problemDetail || '',
+    messages_per_day: Number(body?.messages_per_day || body?.messagesPerDay || body?.ingest?.messagesPerDay || 0),
     needs_booking: body?.needs_booking ?? body?.needsBooking ?? body?.ingest?.needsBooking ?? false,
     multiple_offers: body?.multiple_offers ?? body?.multipleOffers ?? body?.ingest?.multipleOffers ?? false,
     needs_staff_routing: body?.needs_staff_routing ?? body?.needsStaffRouting ?? body?.ingest?.needsStaffRouting ?? false,
-    owner: body?.owner || "",
-    next_action: body?.next_action || "Review new inbound lead",
-    notes: body?.notes || "",
+    owner: body?.owner || '',
+    next_action: body?.next_action || 'Review new inbound lead',
+    notes: body?.notes || '',
   };
 
-  const airtableFields = body?.airtableFields || {
-    lead_id: leadPayload.lead_id,
-    created_at: leadPayload.created_at,
-    name: leadPayload.name,
-    email: leadPayload.email,
-    phone: leadPayload.phone || "",
-    company: leadPayload.company,
-    source: leadPayload.source,
-    service_need: leadPayload.service_need,
-    package_interest: leadPayload.package_interest || "",
-    recommended_package: leadPayload.recommended_package || "",
-    qualification_status: leadPayload.qualification_status || "",
-    qualification_reason: leadPayload.qualification_reason || "",
-    crm_used: leadPayload.crm_used || "",
-    booking_link: leadPayload.booking_link || "",
-    current_problem: leadPayload.current_problem || "",
-    messages_per_day: leadPayload.messages_per_day || 0,
-    needs_booking: leadPayload.needs_booking ?? false,
-    multiple_offers: leadPayload.multiple_offers ?? false,
-    needs_staff_routing: leadPayload.needs_staff_routing ?? false,
-    owner: leadPayload.owner || "",
-    next_action: leadPayload.next_action || "",
-    notes: leadPayload.notes || "",
-    niche: leadPayload.niche || "",
-    lead_sources: Array.isArray(leadPayload.lead_sources) ? leadPayload.lead_sources.join(", ") : "",
+  const airtableFields = {
+    ...buildAirtableCompatibilityFields(leadPayload),
+    ...(body?.airtableFields || {}),
   };
 
   const resolvedEventName =
-    body?.metadata?.event_name ||
-    body?.activityPayload?.event_name ||
-    body?.event_name ||
-    "website_intake_submitted";
+    body?.metadata?.event_name || body?.activityPayload?.event_name || body?.event_name || 'website_intake_submitted';
 
   const activityPayload: ActivityPayload = body?.activityPayload || {
     activity_id: `act_${Date.now()}`,
     lead_id: leadPayload.lead_id,
-    tenant_id: body?.tenant_id || "demo-client",
+    tenant_id: body?.tenant_id || 'demo-client',
     event_name: resolvedEventName,
     event_timestamp: timestamp,
-    actor: "website",
-    status: "success",
-    details: "Lead submitted from website intake form",
+    actor: 'website',
+    status: 'success',
+    details: 'Lead submitted from website intake form',
   };
 
   const metadata: MetadataPayload = body?.metadata || {
-    source_app: "flowstacksales",
-    source_step: body?.step || "proposal",
-    tenant_id: body?.tenant_id || "demo-client",
+    source_app: 'flowstacksales',
+    source_step: body?.step || 'proposal',
+    tenant_id: body?.tenant_id || 'demo-client',
     event_name: resolvedEventName,
     submitted_at: timestamp,
+    package_key: body?.package_key,
   };
 
   return {
-    ...body,
-    proposalMarkdown: body?.proposalMarkdown || "",
-    recommendedPackage: body?.recommendedPackage || leadPayload.recommended_package || "",
-    qualificationReason: body?.qualificationReason || leadPayload.qualification_reason || "",
+    proposalMarkdown: body?.proposalMarkdown || '',
+    recommendedPackage: body?.recommendedPackage || leadPayload.recommended_package || '',
+    qualificationReason: body?.qualificationReason || leadPayload.qualification_reason || '',
     leadPayload,
     airtableFields,
     activityPayload,
@@ -154,11 +212,11 @@ function normalizeLeadPayload(body: any) {
   };
 }
 
-function cleanFields<T extends Record<string, any>>(fields: T): T {
+function cleanFields<T extends Record<string, unknown>>(fields: T): T {
   const cleaned = Object.fromEntries(
     Object.entries(fields).map(([key, value]) => {
-      if (value === undefined || value === null) return [key, ""];
-      if (Array.isArray(value)) return [key, value.join(", ")];
+      if (value === undefined || value === null) return [key, ''];
+      if (Array.isArray(value)) return [key, value.join(', ')];
       return [key, value];
     })
   );
@@ -170,7 +228,7 @@ async function airtableRequest(url: string, pat: string, init?: RequestInit) {
     ...init,
     headers: {
       Authorization: `Bearer ${pat}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(init?.headers || {}),
     },
   });
@@ -188,30 +246,26 @@ async function findLeadRecord(baseId: string, pat: string, leadId: string, email
   const filters: string[] = [];
 
   if (leadId) {
-    filters.push(`{lead_id}="${leadId.replace(/"/g, '\\"')}"`);
+    filters.push(`OR({lead_id}="${leadId.replace(/"/g, '\\"')}",{Lead ID}="${leadId.replace(/"/g, '\\"')}")`);
   }
   if (email) {
-    filters.push(`LOWER({email})="${email.toLowerCase().replace(/"/g, '\\"')}"`);
+    const safeEmail = email.toLowerCase().replace(/"/g, '\\"');
+    filters.push(`OR(LOWER({email})="${safeEmail}",LOWER({Email})="${safeEmail}")`);
   }
 
   if (filters.length === 0) return null;
 
-  const formula = filters.length === 1 ? filters[0] : `OR(${filters.join(",")})`;
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Leads")}?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`;
+  const formula = filters.length === 1 ? filters[0] : `OR(${filters.join(',')})`;
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent('Leads')}?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`;
   const result = await airtableRequest(url, pat);
 
   return result?.records?.[0] || null;
 }
 
-async function createAirtableRecord(
-  baseId: string,
-  tableName: string,
-  pat: string,
-  fields: Record<string, any>
-) {
+async function createAirtableRecord(baseId: string, tableName: string, pat: string, fields: Record<string, unknown>) {
   const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
   return airtableRequest(url, pat, {
-    method: "POST",
+    method: 'POST',
     body: JSON.stringify({ fields: cleanFields(fields) }),
   });
 }
@@ -221,60 +275,60 @@ async function updateAirtableRecord(
   tableName: string,
   recordId: string,
   pat: string,
-  fields: Record<string, any>
+  fields: Record<string, unknown>
 ) {
   const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}/${recordId}`;
   return airtableRequest(url, pat, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({ fields: cleanFields(fields) }),
   });
 }
 
-function buildBriefMarkdown(payload: ReturnType<typeof normalizeLeadPayload>) {
+function buildBriefMarkdown(payload: NormalizedPayload) {
   return [
-    `# Flowstack Proposal`,
-    ``,
+    '# Flowstack Proposal',
+    '',
     `Generated: ${payload.metadata.submitted_at}`,
-    ``,
-    `## Contact`,
+    '',
+    '## Contact',
     `Name: ${payload.leadPayload.name}`,
     `Business: ${payload.leadPayload.company}`,
     `Email: ${payload.leadPayload.email}`,
-    `Phone: ${payload.leadPayload.phone || ""}`,
-    ``,
-    `## Business Context`,
-    `Niche: ${payload.leadPayload.niche || ""}`,
-    `Lead Sources: ${Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(", ") : ""}`,
-    `Primary Problem: ${payload.leadPayload.service_need || ""}`,
-    `Problem Detail: ${payload.leadPayload.current_problem || ""}`,
-    `CRM Used: ${payload.leadPayload.crm_used || ""}`,
-    `Booking Link: ${payload.leadPayload.booking_link || ""}`,
-    `Needs Booking: ${payload.leadPayload.needs_booking ? "Yes" : "No"}`,
-    `Multiple Offers: ${payload.leadPayload.multiple_offers ? "Yes" : "No"}`,
-    `Needs Staff Routing: ${payload.leadPayload.needs_staff_routing ? "Yes" : "No"}`,
-    ``,
-    `## Recommendation`,
-    `Package: ${payload.recommendedPackage || payload.leadPayload.recommended_package || ""}`,
-    `Reason: ${payload.qualificationReason || payload.leadPayload.qualification_reason || ""}`,
-    ``,
-    `## Proposal`,
-    payload.proposalMarkdown || "",
-    ``,
-  ].join("\n");
+    `Phone: ${payload.leadPayload.phone || ''}`,
+    '',
+    '## Business Context',
+    `Niche: ${payload.leadPayload.niche || ''}`,
+    `Lead Sources: ${Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(', ') : ''}`,
+    `Primary Problem: ${payload.leadPayload.service_need || ''}`,
+    `Problem Detail: ${payload.leadPayload.current_problem || ''}`,
+    `CRM Used: ${payload.leadPayload.crm_used || ''}`,
+    `Booking Link: ${payload.leadPayload.booking_link || ''}`,
+    `Needs Booking: ${payload.leadPayload.needs_booking ? 'Yes' : 'No'}`,
+    `Multiple Offers: ${payload.leadPayload.multiple_offers ? 'Yes' : 'No'}`,
+    `Needs Staff Routing: ${payload.leadPayload.needs_staff_routing ? 'Yes' : 'No'}`,
+    '',
+    '## Recommendation',
+    `Package: ${payload.recommendedPackage || payload.leadPayload.recommended_package || ''}`,
+    `Reason: ${payload.qualificationReason || payload.leadPayload.qualification_reason || ''}`,
+    '',
+    '## Proposal',
+    payload.proposalMarkdown || '',
+    '',
+  ].join('\n');
 }
 
-function buildSalesEmailHtml(payload: ReturnType<typeof normalizeLeadPayload>) {
+function buildSalesEmailHtml(payload: NormalizedPayload) {
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
       <h2>New Flowstack Sales Handoff</h2>
       <p><strong>Lead:</strong> ${payload.leadPayload.name}</p>
       <p><strong>Business:</strong> ${payload.leadPayload.company}</p>
       <p><strong>Email:</strong> ${payload.leadPayload.email}</p>
-      <p><strong>Phone:</strong> ${payload.leadPayload.phone || ""}</p>
-      <p><strong>Recommended Package:</strong> ${payload.recommendedPackage || payload.leadPayload.recommended_package || ""}</p>
-      <p><strong>Qualification Reason:</strong> ${payload.qualificationReason || payload.leadPayload.qualification_reason || ""}</p>
-      <p><strong>Main Problem:</strong> ${payload.leadPayload.service_need || ""}</p>
-      <p><strong>Lead Sources:</strong> ${Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(", ") : ""}</p>
+      <p><strong>Phone:</strong> ${payload.leadPayload.phone || ''}</p>
+      <p><strong>Recommended Package:</strong> ${payload.recommendedPackage || payload.leadPayload.recommended_package || ''}</p>
+      <p><strong>Qualification Reason:</strong> ${payload.qualificationReason || payload.leadPayload.qualification_reason || ''}</p>
+      <p><strong>Main Problem:</strong> ${payload.leadPayload.service_need || ''}</p>
+      <p><strong>Lead Sources:</strong> ${Array.isArray(payload.leadPayload.lead_sources) ? payload.leadPayload.lead_sources.join(', ') : ''}</p>
       <p><strong>Event:</strong> ${payload.metadata.event_name}</p>
       <hr />
       <p>The exported brief is attached as a markdown file.</p>
@@ -282,7 +336,7 @@ function buildSalesEmailHtml(payload: ReturnType<typeof normalizeLeadPayload>) {
   `;
 }
 
-async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPayload>) {
+async function sendSalesHandoffEmail(payload: NormalizedPayload) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const emailFrom = process.env.FLOWSTACK_SALES_EMAIL_FROM;
   const emailTo = process.env.FLOWSTACK_SALES_EMAIL_TO;
@@ -291,23 +345,23 @@ async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPay
     return {
       sent: false,
       skipped: true,
-      reason: "Missing RESEND_API_KEY or FLOWSTACK_SALES_EMAIL_FROM / FLOWSTACK_SALES_EMAIL_TO",
+      reason: 'Missing RESEND_API_KEY or FLOWSTACK_SALES_EMAIL_FROM / FLOWSTACK_SALES_EMAIL_TO',
     };
   }
 
   const briefMarkdown = buildBriefMarkdown(payload);
-  const attachmentContent = Buffer.from(briefMarkdown, "utf8").toString("base64");
+  const attachmentContent = Buffer.from(briefMarkdown, 'utf8').toString('base64');
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       from: emailFrom,
       to: [emailTo],
-      subject: `Flowstack Sales Handoff — ${payload.leadPayload.company} — ${payload.recommendedPackage || payload.leadPayload.recommended_package || "Recommendation"}`,
+      subject: `Flowstack Sales Handoff — ${payload.leadPayload.company} — ${payload.recommendedPackage || payload.leadPayload.recommended_package || 'Recommendation'}`,
       html: buildSalesEmailHtml(payload),
       text: briefMarkdown,
       attachments: [
@@ -333,8 +387,8 @@ async function sendSalesHandoffEmail(payload: ReturnType<typeof normalizeLeadPay
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const pat = process.env.FLOWSTACK_AIRTABLE_PAT;
@@ -342,14 +396,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!pat || !baseId) {
     return res.status(500).json({
-      error: "Missing FLOWSTACK_AIRTABLE_PAT or FLOWSTACK_AIRTABLE_BASE_ID",
+      error: 'Missing FLOWSTACK_AIRTABLE_PAT or FLOWSTACK_AIRTABLE_BASE_ID',
     });
   }
 
   try {
     const normalizedBody = normalizeLeadPayload(req.body ?? {});
-    console.log("=== Direct Lead Ingest Called ===");
-    console.log("Normalized request body:", normalizedBody);
 
     const existingLead = await findLeadRecord(
       baseId,
@@ -359,37 +411,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     let leadResult: any;
-    let leadMode: "created" | "updated";
+    let leadMode: 'created' | 'updated';
 
     if (existingLead?.id) {
-      leadResult = await updateAirtableRecord(
-        baseId,
-        "Leads",
-        existingLead.id,
-        pat,
-        normalizedBody.airtableFields
-      );
-      leadMode = "updated";
+      leadResult = await updateAirtableRecord(baseId, 'Leads', existingLead.id, pat, normalizedBody.airtableFields);
+      leadMode = 'updated';
     } else {
-      leadResult = await createAirtableRecord(
-        baseId,
-        "Leads",
-        pat,
-        normalizedBody.airtableFields
-      );
-      leadMode = "created";
+      leadResult = await createAirtableRecord(baseId, 'Leads', pat, normalizedBody.airtableFields);
+      leadMode = 'created';
     }
 
-    const activityResult = await createAirtableRecord(
-      baseId,
-      "Activities",
-      pat,
-      normalizedBody.activityPayload
-    );
+    const activityResult = await createAirtableRecord(baseId, 'Activities', pat, normalizedBody.activityPayload as Record<string, unknown>);
 
     const shouldSendSalesHandoff =
-      normalizedBody.metadata.event_name === "sales_handoff_sent" ||
-      normalizedBody.activityPayload.event_name === "sales_handoff_sent";
+      normalizedBody.metadata.event_name === 'sales_handoff_sent' ||
+      normalizedBody.activityPayload.event_name === 'sales_handoff_sent';
 
     let emailResult: any = { sent: false, skipped: true };
 
@@ -399,7 +435,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       ok: true,
-      mode: "direct-airtable",
+      mode: 'direct-airtable',
       lead_mode: leadMode,
       lead_record_id: leadResult?.id || null,
       activity_record_id: activityResult?.id || null,
@@ -408,9 +444,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       email: emailResult,
     });
   } catch (error) {
-    console.error("Direct lead ingest error:", error);
+    console.error('Direct lead ingest error:', error);
     return res.status(500).json({
-      error: "Direct lead ingest failed",
+      error: 'Direct lead ingest failed',
       details: String(error),
     });
   }

@@ -21,6 +21,25 @@ type IntakeRecommendation = {
   needsEnterprise: boolean;
 };
 
+type AirtableFieldValue = string | number | boolean | null;
+export type AirtableFields = Record<string, AirtableFieldValue>;
+
+export type LeadCapturePayload = {
+  recommendedPackage: string;
+  qualificationReason: string;
+  packageKey: PackageKey;
+  leadPayload: Record<string, unknown>;
+  airtableFields: AirtableFields;
+  activityPayload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+};
+
+const joinLeadSources = (leadSources: string[]) => leadSources.filter(Boolean).join(', ');
+
+const buildSalesStage = (needsEnterprise: boolean) => (needsEnterprise ? 'Needs Enterprise Review' : 'Qualified');
+
+const toAirtableBoolean = (value: boolean) => (value ? true : false);
+
 export const recommendPackageFromInputs = (monthlyLeakage: number, ingest: IngestData): IntakeRecommendation => {
   let packageKey = recommendPackage(monthlyLeakage);
 
@@ -89,16 +108,17 @@ export const buildQualificationReason = (
   return `${serviceCatalog[recommendation.packageKey].name} recommended because of ${reasons.join(', ')}.`;
 };
 
-export const buildLeadCapturePayload = (appState: AppState) => {
+export const buildLeadCapturePayload = (appState: AppState): LeadCapturePayload => {
   const monthlyLeakage = appState.calculatedMetrics?.monthlyLeakage ?? 0;
   const recommendation = recommendPackageFromInputs(monthlyLeakage, appState.ingest);
   const recommendedPackage = recommendation.recommendedLabel;
   const qualificationReason = buildQualificationReason(recommendation, monthlyLeakage, appState.ingest);
   const qualificationStatus = 'Qualified';
+  const salesStage = buildSalesStage(recommendation.needsEnterprise);
   const leadId = `fs_lead_${Date.now()}`;
   const createdAt = new Date().toISOString();
   const tenantId = 'demo-client';
-  const sourceLabel = appState.ingest.leadSources.join(', ');
+  const sourceLabel = joinLeadSources(appState.ingest.leadSources);
   const problemDetail = appState.ingest.problemDetail?.trim() ?? '';
 
   const leadPayload = {
@@ -119,7 +139,7 @@ export const buildLeadCapturePayload = (appState: AppState) => {
     crm_used: appState.ingest.crmUsed || '',
     booking_link: appState.ingest.bookingLink || '',
     current_problem: problemDetail,
-    messages_per_day: appState.ingest.messagesPerDay,
+    messages_per_day: Number(appState.ingest.messagesPerDay || 0),
     needs_booking: appState.ingest.needsBooking,
     multiple_offers: appState.ingest.multipleOffers,
     needs_staff_routing: appState.ingest.needsStaffRouting,
@@ -130,7 +150,8 @@ export const buildLeadCapturePayload = (appState: AppState) => {
       : `Primary problem: ${appState.ingest.primaryProblem}.`,
   };
 
-  const airtableFields = {
+  const airtableFields: AirtableFields = {
+    // existing internal / snake_case keys
     lead_id: leadPayload.lead_id,
     created_at: leadPayload.created_at,
     name: leadPayload.name,
@@ -147,14 +168,42 @@ export const buildLeadCapturePayload = (appState: AppState) => {
     booking_link: leadPayload.booking_link,
     current_problem: leadPayload.current_problem,
     messages_per_day: leadPayload.messages_per_day,
-    needs_booking: leadPayload.needs_booking,
-    multiple_offers: leadPayload.multiple_offers,
-    needs_staff_routing: leadPayload.needs_staff_routing,
+    needs_booking: toAirtableBoolean(leadPayload.needs_booking),
+    multiple_offers: toAirtableBoolean(leadPayload.multiple_offers),
+    needs_staff_routing: toAirtableBoolean(leadPayload.needs_staff_routing),
     owner: leadPayload.owner,
     next_action: leadPayload.next_action,
     notes: leadPayload.notes,
     niche: leadPayload.niche,
-    lead_sources: leadPayload.lead_sources.join(', '),
+    lead_sources: joinLeadSources(leadPayload.lead_sources),
+
+    // additive Airtable-facing aliases preserved by the master reference
+    'Lead ID': leadPayload.lead_id,
+    'Created At': leadPayload.created_at,
+    'Name': leadPayload.name,
+    'Email': leadPayload.email,
+    'Phone': leadPayload.phone,
+    'Company': leadPayload.company,
+    'Source': leadPayload.source,
+    'Lead Sources': joinLeadSources(leadPayload.lead_sources),
+    'Niche': leadPayload.niche,
+    'Service Need': leadPayload.service_need,
+    'Package Interest': leadPayload.package_interest,
+    'Recommended Package': leadPayload.recommended_package,
+    'Qualification Status': leadPayload.qualification_status,
+    'Qualification Reason': leadPayload.qualification_reason,
+    'Sales Stage': salesStage,
+    'Sales Stage (Derived)': salesStage,
+    'Current Problem': leadPayload.current_problem,
+    'CRM Used': leadPayload.crm_used,
+    'Booking Link': leadPayload.booking_link,
+    'Messages Per Day': leadPayload.messages_per_day,
+    'Needs Booking': toAirtableBoolean(leadPayload.needs_booking),
+    'Multiple Offers': toAirtableBoolean(leadPayload.multiple_offers),
+    'Needs Staff Routing': toAirtableBoolean(leadPayload.needs_staff_routing),
+    'Owner': leadPayload.owner,
+    'Next Action': leadPayload.next_action,
+    'Notes': leadPayload.notes,
   };
 
   const activityPayload = {
