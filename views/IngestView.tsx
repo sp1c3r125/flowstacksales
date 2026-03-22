@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
 import { Input, Button, Select } from '../components/UI';
-import { NeonPanel, primaryButtonClass } from '../components/FlowstackBlueAmbientTheme';
+import { NeonPanel } from '../components/FlowstackBlueAmbientTheme';
 import { IngestData, IngestSchema } from '../types';
 import {
   ArrowRight,
   ArrowLeft,
-  ShieldCheck,
   User,
   Mail,
   Target,
@@ -15,7 +14,9 @@ import {
   Building2,
   MessageSquare,
   Link2,
-  Briefcase
+  Briefcase,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Props {
@@ -95,36 +96,50 @@ const loadDraft = (): Partial<IngestData> => {
       contactEmail: parsed.contactEmail || '',
       phone: parsed.phone || '',
       niche: parsed.niche || '',
-      messagesPerDay: Number(parsed.messagesPerDay || 0),
       leadSources: Array.isArray(parsed.leadSources) ? parsed.leadSources : [],
+      messagesPerDay: Number(parsed.messagesPerDay || 0),
       primaryProblem: parsed.primaryProblem || '',
       problemDetail: parsed.problemDetail || '',
-      crmUsed: parsed.crmUsed || '',
-      bookingLink: parsed.bookingLink || '',
       needsBooking: Boolean(parsed.needsBooking),
       multipleOffers: Boolean(parsed.multipleOffers),
       needsStaffRouting: Boolean(parsed.needsStaffRouting),
+      crmUsed: parsed.crmUsed || '',
+      bookingLink: parsed.bookingLink || '',
     };
   } catch {
     return {};
   }
 };
 
-const YesNoPill: React.FC<{ label: string; value: boolean; onChange: (next: boolean) => void }> = ({ label, value, onChange }) => (
+const YesNoPill: React.FC<{
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}> = ({ label, value, onChange }) => (
   <div className="space-y-2">
-    <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">{label}</label>
+    <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">
+      {label}
+    </label>
     <div className="grid grid-cols-2 gap-2">
       <button
         type="button"
         onClick={() => onChange(true)}
-        className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${value ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300' : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'}`}
+        className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${
+          value
+            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+            : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+        }`}
       >
         Yes
       </button>
       <button
         type="button"
         onClick={() => onChange(false)}
-        className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${!value ? 'border-blue-500 bg-blue-500/10 text-blue-300' : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'}`}
+        className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${
+          !value
+            ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+            : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+        }`}
       >
         No
       </button>
@@ -149,8 +164,10 @@ const MultiSelectPills: React.FC<{
 
   return (
     <div className="space-y-3">
-      <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">{label}</label>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <label className="text-sm font-mono text-slate-400 uppercase tracking-wider font-bold">
+        {label}
+      </label>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {options.map(option => {
           const active = values.includes(option);
           return (
@@ -158,17 +175,36 @@ const MultiSelectPills: React.FC<{
               key={option}
               type="button"
               onClick={() => toggleOption(option)}
-              className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${active ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300' : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'}`}
+              className={`rounded-lg border px-4 py-3 text-sm font-mono transition-all ${
+                active
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+                  : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+              }`}
             >
               {option}
             </button>
           );
         })}
       </div>
-      {error ? <p className="text-red-400 text-xs font-mono">{error}</p> : null}
+      {error ? <p className="text-xs font-mono text-red-400">{error}</p> : null}
     </div>
   );
 };
+
+const ProgressPill: React.FC<{
+  label: string;
+  active?: boolean;
+}> = ({ label, active }) => (
+  <div
+    className={`rounded-full border px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${
+      active
+        ? 'border-blue-400/40 bg-blue-500/10 text-blue-200'
+        : 'border-slate-800 bg-slate-950/60 text-slate-500'
+    }`}
+  >
+    {label}
+  </div>
+);
 
 export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof IngestData, string>>>({});
@@ -193,15 +229,15 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
       contactEmail: data.contactEmail || '',
       phone: data.phone || '',
       niche: data.niche || '',
-      messagesPerDay: Number(data.messagesPerDay || 0),
       leadSources: data.leadSources || [],
+      messagesPerDay: Number(data.messagesPerDay || 0),
       primaryProblem: data.primaryProblem || '',
       problemDetail: data.problemDetail || '',
-      crmUsed: data.crmUsed || '',
-      bookingLink: data.bookingLink || '',
       needsBooking: data.needsBooking,
       multipleOffers: data.multipleOffers,
       needsStaffRouting: data.needsStaffRouting,
+      crmUsed: data.crmUsed || '',
+      bookingLink: data.bookingLink || '',
     };
 
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -211,15 +247,15 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
     data.contactEmail,
     data.phone,
     data.niche,
-    data.messagesPerDay,
     data.leadSources,
+    data.messagesPerDay,
     data.primaryProblem,
     data.problemDetail,
-    data.crmUsed,
-    data.bookingLink,
     data.needsBooking,
     data.multipleOffers,
     data.needsStaffRouting,
+    data.crmUsed,
+    data.bookingLink,
   ]);
 
   const handleClearDraft = () => {
@@ -238,15 +274,15 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
       contactEmail: '',
       phone: '',
       niche: '',
-      messagesPerDay: 0,
       leadSources: [],
+      messagesPerDay: 0,
       primaryProblem: '',
       problemDetail: '',
-      crmUsed: '',
-      bookingLink: '',
       needsBooking: false,
       multipleOffers: false,
       needsStaffRouting: false,
+      crmUsed: '',
+      bookingLink: '',
     });
   };
 
@@ -329,19 +365,28 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
 
     if (firstMissingSelector) {
       setTimeout(() => {
-        document.querySelector(firstMissingSelector)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.querySelector(firstMissingSelector)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
       }, 50);
     }
   };
 
   return (
     <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-      <div className="mx-auto max-w-3xl text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
+      <div className="mx-auto mb-8 max-w-4xl text-center">
+        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+          <ProgressPill label="Step 1: size the leak" />
+          <ProgressPill label="Step 2: qualify fit" active />
+          <ProgressPill label="Step 3: get package" />
+        </div>
+
+        <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
           Tell us about your <span className="text-emerald-500">lead flow</span>
         </h1>
-        <p className="text-slate-400 text-base">
-          We’ll use this to qualify the lead and recommend the right Flowstack package internally.
+        <p className="mt-3 text-base text-slate-400">
+          Start with the current problem, then add enough business context to make the package recommendation tighter.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
           Fields marked <span className="text-rose-400">*</span> are required.
@@ -353,8 +398,12 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
           <NeonPanel className="px-4 py-3">
             <div className="flex flex-col gap-3 text-sm text-cyan-100 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-300/75">Draft restored</div>
-                <div className="text-slate-300">Previous form data was restored on this browser.</div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-300/75">
+                  Draft restored
+                </div>
+                <div className="text-slate-300">
+                  Previous intake data was restored on this browser.
+                </div>
               </div>
               <button
                 type="button"
@@ -367,167 +416,205 @@ export const IngestView: React.FC<Props> = ({ data, onUpdate, onNext, onBack }) 
           </NeonPanel>
         ) : null}
 
-        <BentoGrid className="max-w-6xl">
-        <BentoCard title="Business and contact" className="col-span-12 md:col-span-7" accent="green">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              id="contactName"
-              name="contact_name"
-              autoComplete="off"
-              label="Your name *"
-              value={data.contactName}
-              onChange={e => handleChange('contactName', e.target.value)}
-              error={errors.contactName}
-              placeholder={namePlaceholder}
-              prefix={<User size={14} />}
-            />
-            <Input
-              id="agencyName"
-              name="organization"
-              autoComplete="organization"
-              label="Business name *"
-              value={data.agencyName}
-              onChange={e => handleChange('agencyName', e.target.value)}
-              error={errors.agencyName}
-              placeholder="e.g. Apex Dental"
-              prefix={<Building2 size={14} />}
-            />
-            <Input
-              id="contactEmail"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              label="Best email *"
-              value={data.contactEmail}
-              onChange={e => handleChange('contactEmail', e.target.value)}
-              error={errors.contactEmail}
-              placeholder="owner@business.com"
-              prefix={<Mail size={14} />}
-            />
-            <Input
-              id="phone"
-              name="tel"
-              type="tel"
-              autoComplete="tel"
-              label="Phone *"
-              value={data.phone}
-              onChange={e => handleChange('phone', e.target.value)}
-              error={errors.phone}
-              placeholder="e.g. +63 917 000 0000"
-              prefix={<Phone size={14} />}
-            />
-            <Select
-              id="niche"
-              label="Business type *"
-              value={data.niche}
-              onChange={e => handleChange('niche', e.target.value)}
-              error={errors.niche}
-              options={NICHE_OPTIONS}
-              prefix={<Target size={14} />}
-            />
-            <Input
-              id="messagesPerDay"
-              label="Messages per day *"
-              type="number"
-              value={String(data.messagesPerDay)}
-              onChange={e => handleChange('messagesPerDay', Number(e.target.value || 0))}
-              error={errors.messagesPerDay}
-              placeholder="e.g. 12"
-              prefix={<MessageSquare size={14} />}
-            />
-          </div>
-
-          <div className="mt-6" data-field="leadSources">
-            <MultiSelectPills
-              label="Lead sources *"
-              values={data.leadSources}
-              options={LEAD_SOURCE_OPTIONS}
-              error={errors.leadSources}
-              onChange={next => handleChange('leadSources', next)}
-            />
-          </div>
-        </BentoCard>
-
-        <BentoCard title="Qualification signals" className="col-span-12 md:col-span-5">
-          <div className="space-y-6">
-            <Select
-              id="primaryProblem"
-              label="Main problem right now *"
-              value={data.primaryProblem}
-              onChange={e => handleChange('primaryProblem', e.target.value)}
-              error={errors.primaryProblem}
-              options={PRIMARY_PROBLEM_OPTIONS}
-              prefix={<AlertTriangle size={14} />}
-            />
-            <Input
-              label="Problem detail (optional)"
-              value={data.problemDetail ?? ''}
-              onChange={e => handleChange('problemDetail', e.target.value)}
-              error={errors.problemDetail}
-              placeholder="Add context if needed"
-              prefix={<AlertTriangle size={14} />}
-            />
-            <Input
-              label="CRM used (optional)"
-              value={data.crmUsed}
-              onChange={e => handleChange('crmUsed', e.target.value)}
-              error={errors.crmUsed}
-              placeholder="e.g. HubSpot, GoHighLevel"
-              prefix={<Briefcase size={14} />}
-            />
-            <Input
-              label="Booking link (optional)"
-              value={data.bookingLink}
-              onChange={e => handleChange('bookingLink', e.target.value)}
-              error={errors.bookingLink}
-              placeholder="https://cal.com/..."
-              prefix={<Link2 size={14} />}
-            />
-          </div>
-        </BentoCard>
-
-        <BentoCard title="Operational complexity" className="col-span-12 md:col-span-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <YesNoPill label="Needs booking" value={data.needsBooking} onChange={next => handleChange('needsBooking', next)} />
-            <YesNoPill label="Multiple offers" value={data.multipleOffers} onChange={next => handleChange('multipleOffers', next)} />
-            <YesNoPill label="Needs staff routing" value={data.needsStaffRouting} onChange={next => handleChange('needsStaffRouting', next)} />
-          </div>
-        </BentoCard>
-
-        <BentoCard title="What happens next" className="col-span-12 md:col-span-4">
-          <div className="space-y-4 text-sm text-slate-300">
-            <div><span className="text-white font-semibold">1.</span> We qualify the lead based on the real intake details.</div>
-            <div><span className="text-white font-semibold">2.</span> The website writes the qualification into Airtable for ops.</div>
-            <div><span className="text-white font-semibold">3.</span> We recommend the right package internally after evaluating the workflow signals.</div>
-          </div>
-        </BentoCard>
-
-        <BentoCard title="Data handling" className="col-span-12">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-            <div>
-              <h4 className="text-emerald-400 font-mono text-sm font-bold mb-1">BOUNDED PACKAGE LOGIC</h4>
-              <p className="text-emerald-500/70 text-xs">
-                The system recommends approved packages internally. The form collects qualification data, not package guesses from the lead.
-              </p>
-            </div>
-          </div>
-        </BentoCard>
-
         {submitNotice ? (
-          <div className="col-span-12 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            {submitNotice}
-          </div>
+          <NeonPanel className="px-4 py-3">
+            <div className="flex items-start gap-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <div className="text-slate-300">{submitNotice}</div>
+            </div>
+          </NeonPanel>
         ) : null}
 
-        <div className="col-span-12 flex justify-between pt-4">
-          <Button onClick={onBack} variant="secondary"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-          <Button onClick={handleNext} className={primaryButtonClass}>
-            Generate recommendation <ArrowRight className="ml-2 h-4 w-4" />
+        <BentoGrid className="max-w-6xl">
+          <BentoCard title="Main problem and qualification" className="col-span-12 md:col-span-5" accent="green">
+            <div className="space-y-6">
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="mb-1 flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-emerald-300/80">
+                  <ShieldCheck size={14} />
+                  Required before recommendation
+                </div>
+                <p className="text-sm text-slate-300">
+                  The package recommendation should not run until the main problem is selected clearly.
+                </p>
+              </div>
+
+              <Select
+                id="primaryProblem"
+                label="Main problem right now *"
+                value={data.primaryProblem}
+                onChange={e => handleChange('primaryProblem', e.target.value)}
+                error={errors.primaryProblem}
+                options={PRIMARY_PROBLEM_OPTIONS}
+                prefix={<AlertTriangle size={14} />}
+              />
+
+              <Input
+                label="Problem detail (optional)"
+                value={data.problemDetail ?? ''}
+                onChange={e => handleChange('problemDetail', e.target.value)}
+                error={errors.problemDetail}
+                placeholder="Add context if needed"
+                prefix={<AlertTriangle size={14} />}
+              />
+
+              <Input
+                label="CRM used (optional)"
+                value={data.crmUsed}
+                onChange={e => handleChange('crmUsed', e.target.value)}
+                error={errors.crmUsed}
+                placeholder="e.g. HubSpot, GoHighLevel"
+                prefix={<Briefcase size={14} />}
+              />
+
+              <Input
+                label="Booking link (optional)"
+                value={data.bookingLink}
+                onChange={e => handleChange('bookingLink', e.target.value)}
+                error={errors.bookingLink}
+                placeholder="https://cal.com/..."
+                prefix={<Link2 size={14} />}
+              />
+            </div>
+          </BentoCard>
+
+          <BentoCard title="Business and contact" className="col-span-12 md:col-span-7" accent="green">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Input
+                id="contactName"
+                name="contact_name"
+                autoComplete="off"
+                label="Your name *"
+                value={data.contactName}
+                onChange={e => handleChange('contactName', e.target.value)}
+                error={errors.contactName}
+                placeholder={namePlaceholder}
+                prefix={<User size={14} />}
+              />
+
+              <Input
+                id="agencyName"
+                name="organization"
+                autoComplete="organization"
+                label="Business name *"
+                value={data.agencyName}
+                onChange={e => handleChange('agencyName', e.target.value)}
+                error={errors.agencyName}
+                placeholder="e.g. Apex Dental"
+                prefix={<Building2 size={14} />}
+              />
+
+              <Input
+                id="contactEmail"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                label="Best email *"
+                value={data.contactEmail}
+                onChange={e => handleChange('contactEmail', e.target.value)}
+                error={errors.contactEmail}
+                placeholder="owner@business.com"
+                prefix={<Mail size={14} />}
+              />
+
+              <Input
+                id="phone"
+                name="tel"
+                type="tel"
+                autoComplete="tel"
+                label="Phone *"
+                value={data.phone}
+                onChange={e => handleChange('phone', e.target.value)}
+                error={errors.phone}
+                placeholder="e.g. +63 917 000 0000"
+                prefix={<Phone size={14} />}
+              />
+
+              <Select
+                id="niche"
+                label="Business type *"
+                value={data.niche}
+                onChange={e => handleChange('niche', e.target.value)}
+                error={errors.niche}
+                options={NICHE_OPTIONS}
+                prefix={<Target size={14} />}
+              />
+
+              <Input
+                id="messagesPerDay"
+                label="Messages per day *"
+                type="number"
+                value={String(data.messagesPerDay)}
+                onChange={e => handleChange('messagesPerDay', Number(e.target.value || 0))}
+                error={errors.messagesPerDay}
+                placeholder="e.g. 12"
+                prefix={<MessageSquare size={14} />}
+              />
+            </div>
+
+            <div className="mt-6" data-field="leadSources">
+              <MultiSelectPills
+                label="Lead sources *"
+                values={data.leadSources}
+                options={LEAD_SOURCE_OPTIONS}
+                error={errors.leadSources}
+                onChange={next => handleChange('leadSources', next)}
+              />
+            </div>
+          </BentoCard>
+
+          <BentoCard title="Operational complexity" className="col-span-12 md:col-span-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <YesNoPill
+                label="Needs booking"
+                value={data.needsBooking}
+                onChange={next => handleChange('needsBooking', next)}
+              />
+              <YesNoPill
+                label="Multiple offers"
+                value={data.multipleOffers}
+                onChange={next => handleChange('multipleOffers', next)}
+              />
+              <YesNoPill
+                label="Needs staff routing"
+                value={data.needsStaffRouting}
+                onChange={next => handleChange('needsStaffRouting', next)}
+              />
+            </div>
+          </BentoCard>
+
+          <BentoCard title="What happens next" className="col-span-12 md:col-span-4">
+            <div className="space-y-4 text-sm text-slate-300">
+              <div className="flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <div>We qualify the lead based on the real intake details.</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <div>The website writes the qualification into Airtable for ops.</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <div>We recommend the best-fit Flowstack package inside approved scope.</div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-xs font-mono uppercase tracking-[0.18em] text-slate-500">
+                Keep package truth in services, not in the form UI.
+              </div>
+            </div>
+          </BentoCard>
+        </BentoGrid>
+
+        <div className="flex flex-col gap-3 border-t border-slate-800/60 pt-6 md:flex-row md:items-center md:justify-between">
+          <Button onClick={onBack} variant="ghost">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+
+          <Button onClick={handleNext} className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500">
+            Get package
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
-      </BentoGrid>
       </div>
     </div>
   );

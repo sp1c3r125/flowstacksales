@@ -6,7 +6,7 @@ import { Terminal } from '../components/Terminal';
 import { NeonPanel } from '../components/FlowstackBlueAmbientTheme';
 import { AppState } from '../types';
 import { formatCurrency } from '../utils/calculations';
-import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight } from 'lucide-react';
+import { RefreshCw, Download, FileText, FileBarChart, CheckCircle, Wifi, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { packageComparisonRows, packageOrder, serviceCatalog } from '../services/catalog';
 import { buildLeadCapturePayload } from '../services/intake';
 
@@ -83,6 +83,46 @@ export const ProposalView: React.FC<Props> = ({ appState, onReset }) => {
     if (crmUsed && crmUsed !== 'Not specified') parts.push(`CRM sync (${crmUsed})`);
     return parts.join(' + ');
   }, [appState.ingest, crmUsed]);
+
+
+const immediateNextSteps = useMemo(() => {
+  const steps = [
+    `Confirm ${recommended.name} as the working package direction.`,
+    'Finalize the intake fields, routing rules, and downstream handoff expectations.',
+    'Lock the implementation scope, access requirements, and deployment sequence.',
+  ];
+
+  if (appState.ingest.needsBooking) {
+    steps.push('Define the booking flow, reminders, and escalation points before launch.');
+  }
+
+  if (appState.ingest.needsStaffRouting) {
+    steps.push('Document who receives which lead types so routing stays deterministic.');
+  }
+
+  return steps;
+}, [recommended.name, appState.ingest.needsBooking, appState.ingest.needsStaffRouting]);
+
+const operationalSignals = useMemo(() => {
+  const signals = [
+    `Primary bottleneck: ${bottleneck}`,
+    `Lead sources in scope: ${leadSources}`,
+    `Estimated message volume: ${appState.ingest.messagesPerDay || 0} per day`,
+    `Severity level: ${severity}`,
+  ];
+
+  if (crmUsed && crmUsed !== 'Not specified') {
+    signals.push(`Existing CRM present: ${crmUsed}`);
+  } else {
+    signals.push('CRM maturity is unclear or not yet established.');
+  }
+
+  if (problemDetail.trim()) {
+    signals.push(`Extra context: ${problemDetail.trim()}`);
+  }
+
+  return signals;
+}, [bottleneck, leadSources, appState.ingest.messagesPerDay, severity, crmUsed, problemDetail]);
 
   const exportFileName = useMemo(() => {
     const safeCompany = company.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Lead';
@@ -858,111 +898,192 @@ const drawVerticalGradient = (
         </p>
       </div>
 
-      <BentoGrid>
-        <BentoCard className="col-span-12 md:col-span-4 space-y-4" title="Recommendation" accent="green">
-          <div className="space-y-4">
-            <div>
-              <div className="text-2xl font-bold text-white">{recommended.name}</div>
-              <div className="text-sm text-emerald-400 mt-1">{recommended.tagline}</div>
-            </div>
-            <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-mono uppercase">Estimated annual leakage</div>
-              <div className="text-2xl font-bold text-white">{formatCurrency(annualLeakage)}</div>
-            </div>
-            <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-mono uppercase">Pricing</div>
-              <div className="text-white font-semibold">{recommended.setup}</div>
-              <div className="text-slate-300">{recommended.monthly}</div>
-              {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
-              <div className="text-sm leading-7 tracking-normal break-words whitespace-pre-wrap text-slate-300">{normalizedQualificationReason}</div>
-            </div>
-          </div>
-        </BentoCard>
 
-        <BentoCard
-          className="col-span-12 md:col-span-8 min-h-[400px] flex flex-col"
-          title="Proposal"
-          headerAction={<ArrowRight size={14} className="text-slate-500" />}
-        >
-          <NeonPanel className="flex-1 max-h-[60vh] overflow-y-auto p-8">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-full space-y-6">
-                <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
-                <div className="space-y-2 text-center">
-                  <p className="text-emerald-500 font-mono text-sm animate-pulse">Generating package recommendation...</p>
-                  <p className="text-slate-500 text-xs">Sizing fit, scope, and next step.</p>
+<BentoGrid>
+  <BentoCard className="col-span-12 md:col-span-4 space-y-4" title="Recommendation overview" accent="green">
+    <div className="space-y-4">
+      <div>
+        <div className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em]">Best-fit package</div>
+        <div className="mt-2 text-2xl font-bold text-white">{recommended.name}</div>
+        <div className="text-sm text-emerald-400 mt-1">{recommended.tagline}</div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+          <div className="text-xs text-slate-500 font-mono uppercase">Estimated annual leakage</div>
+          <div className="mt-1 text-2xl font-bold text-white">{formatCurrency(annualLeakage)}</div>
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+          <div className="text-xs text-slate-500 font-mono uppercase">Severity</div>
+          <div className="mt-1 flex items-center gap-2 text-white">
+            <AlertTriangle size={16} className="text-amber-400" />
+            <span className="font-semibold">{severity}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-2">
+        <div className="text-xs text-slate-500 font-mono uppercase">Pricing</div>
+        <div className="text-white font-semibold">{recommended.setup}</div>
+        <div className="text-slate-300">{recommended.monthly}</div>
+        {recommended.altPricing && <div className="text-xs text-slate-500">{recommended.altPricing}</div>}
+      </div>
+
+      <div>
+        <div className="text-xs text-slate-500 font-mono uppercase mb-2">Qualification reason</div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-sm leading-7 tracking-normal break-words whitespace-pre-wrap text-slate-300">
+          {normalizedQualificationReason}
+        </div>
+      </div>
+    </div>
+  </BentoCard>
+
+  <BentoCard className="col-span-12 md:col-span-8" title="Decision summary" accent="green">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/40 p-5">
+        <div>
+          <div className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em]">Current bottleneck</div>
+          <div className="mt-2 text-lg font-semibold text-white">{bottleneck}</div>
+          <p className="mt-2 text-sm leading-7 text-slate-300">
+            This recommendation is built to tighten the intake-to-ops loop around the current leakage pattern without changing package truth inside the UI layer.
+          </p>
+        </div>
+
+        <div>
+          <div className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em] mb-2">Proposed architecture</div>
+          <p className="text-sm leading-7 text-slate-300">{proposedArchitecture}</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-5">
+          <div className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em] mb-3">Immediate next steps</div>
+          <div className="space-y-3">
+            {immediateNextSteps.map((step) => (
+              <div key={step} className="flex gap-3 text-sm leading-7 text-slate-300">
+                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-400" />
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-5">
+          <div className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em] mb-3">Operational signals</div>
+          <div className="space-y-3">
+            {operationalSignals.map((signal) => (
+              <div key={signal} className="flex gap-3 text-sm leading-7 text-slate-300">
+                <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                <span>{signal}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </BentoCard>
+
+  <BentoCard
+    className="col-span-12 min-h-[400px] flex flex-col"
+    title="Proposal"
+    headerAction={<ArrowRight size={14} className="text-slate-500" />}
+  >
+    <NeonPanel className="flex-1 max-h-[60vh] overflow-y-auto p-8">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center h-full space-y-6">
+          <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
+          <div className="space-y-2 text-center">
+            <p className="text-emerald-500 font-mono text-sm animate-pulse">Generating package recommendation...</p>
+            <p className="text-slate-500 text-xs">Sizing fit, scope, and next step.</p>
+          </div>
+        </div>
+      ) : (
+        <article className="max-w-none space-y-5">
+          {visibleProposalBlocks.map((block, index) => {
+            if (block.type === 'heading') {
+              return (
+                <div key={`heading-${index}`} className="pt-2 first:pt-0">
+                  <h2 className="text-lg font-bold uppercase tracking-[0.14em] text-emerald-400">
+                    {block.text}
+                  </h2>
                 </div>
-              </div>
-            ) : (
-              <article className="max-w-none space-y-5">
-                {visibleProposalBlocks.map((block, index) => {
-                  if (block.type === 'heading') {
-                    return (
-                      <div key={`heading-${index}`} className="pt-2 first:pt-0">
-                        <h2 className="text-lg font-bold uppercase tracking-[0.14em] text-emerald-400">
-                          {block.text}
-                        </h2>
-                      </div>
-                    );
-                  }
+              );
+            }
 
-                  if (block.type === 'bullets') {
-                    return (
-                      <ul
-                        key={`bullets-${index}`}
-                        className="space-y-3 rounded-xl border border-slate-800/70 bg-slate-900/40 p-5"
-                      >
-                        {block.items.map((item, itemIndex) => (
-                          <li
-                            key={`bullet-${index}-${itemIndex}`}
-                            className="flex gap-3 text-sm leading-7 text-slate-300"
-                          >
-                            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    );
-                  }
-
-                  return (
-                    <p
-                      key={`paragraph-${index}`}
-                      className="text-sm leading-7 text-slate-300 whitespace-pre-line"
+            if (block.type === 'bullets') {
+              return (
+                <ul
+                  key={`bullets-${index}`}
+                  className="space-y-3 rounded-xl border border-slate-800/70 bg-slate-900/40 p-5"
+                >
+                  {block.items.map((item, itemIndex) => (
+                    <li
+                      key={`bullet-${index}-${itemIndex}`}
+                      className="flex gap-3 text-sm leading-7 text-slate-300"
                     >
-                      {block.text}
-                    </p>
-                  );
-                })}
-              </article>
-            )}
-          </NeonPanel>
-        </BentoCard>
+                      <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            }
 
-        <BentoCard className="col-span-12" title="What is included vs not included">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
-              <div className="space-y-2">
-                {recommended.includes.map((item) => (
-                  <div key={item} className="text-sm text-slate-300">• {item}</div>
-                ))}
+            return (
+              <p
+                key={`paragraph-${index}`}
+                className="text-sm leading-7 text-slate-300 whitespace-pre-line"
+              >
+                {block.text}
+              </p>
+            );
+          })}
+        </article>
+      )}
+    </NeonPanel>
+  </BentoCard>
+
+  <BentoCard className="col-span-12" title="Scope and package fit">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <div className="text-xs text-slate-500 font-mono uppercase mb-3">Included</div>
+          <div className="space-y-2">
+            {recommended.includes.map((item) => (
+              <div key={item} className="flex gap-3 text-sm leading-7 text-slate-300">
+                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-400" />
+                <span>{item}</span>
               </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
-              <div className="space-y-2">
-                {[...recommended.limits, ...recommended.excludes].map((item) => (
-                  <div key={item} className="text-sm text-slate-300">• {item}</div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
-        </BentoCard>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500 font-mono uppercase mb-3">Out of scope</div>
+          <div className="space-y-2">
+            {[...recommended.limits, ...recommended.excludes].map((item) => (
+              <div key={item} className="flex gap-3 text-sm leading-7 text-slate-300">
+                <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
+      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-5">
+        <div className="text-xs text-slate-500 font-mono uppercase mb-3">Intake summary</div>
+        <div className="space-y-3 text-sm text-slate-300">
+          <div><span className="text-slate-500">Company:</span> {company}</div>
+          <div><span className="text-slate-500">Contact:</span> {contactName}</div>
+          <div><span className="text-slate-500">Email:</span> {contactEmail}</div>
+          <div><span className="text-slate-500">Niche:</span> {niche}</div>
+          <div><span className="text-slate-500">Lead sources:</span> {leadSources}</div>
+          <div><span className="text-slate-500">Primary problem:</span> {primaryProblem}</div>
+          <div><span className="text-slate-500">CRM:</span> {crmUsed}</div>
+        </div>
+      </div>
+    </div>
+  </BentoCard>
         <BentoCard className="col-span-12" title="Package comparison">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
