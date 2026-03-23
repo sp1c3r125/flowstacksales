@@ -1,19 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { BentoGrid, BentoCard } from '../components/BentoGrid';
-import { Button, RangeControl } from '../components/UI';
+import { Input, Button, RangeControl } from '../components/UI';
 import { CalculatorData, CalculatorSchema } from '../types';
 import { calculateMonthlyLeakage, calculateAnnualLeakage, formatCurrency } from '../utils/calculations';
-import { ArrowRight, Activity, TrendingDown, Layers, CheckCircle2, CalendarCheck2, ShieldCheck, AlertTriangle } from 'lucide-react';
-import {
-  packageOrder,
-  serviceCatalog,
-  packageComparisonRows,
-  recommendPackage,
-  proofExamples,
-  rolloutSteps,
-  onboardingChecklist,
-  scaleBoundaries,
-} from '../services/catalog';
+import { ArrowRight, Activity, TrendingDown, DollarSign, Layers } from 'lucide-react';
 
 interface Props {
   data: CalculatorData;
@@ -25,58 +15,70 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof CalculatorData, string>>>({});
   const [localData, setLocalData] = useState<CalculatorData>(data);
 
-  const monthlyLeakage = useMemo(
-    () => calculateMonthlyLeakage(localData.volume, localData.value, localData.rate),
+  // Optimized real-time calculation for display
+  const monthlyLeakage = useMemo(() =>
+    calculateMonthlyLeakage(localData.volume, localData.value, localData.rate),
     [localData.volume, localData.value, localData.rate]
   );
-  const annualLeakage = useMemo(() => calculateAnnualLeakage(monthlyLeakage), [monthlyLeakage]);
-  const recommendedKey = useMemo(() => recommendPackage(monthlyLeakage), [monthlyLeakage]);
-  const recommended = useMemo(() => serviceCatalog[recommendedKey], [recommendedKey]);
-  const isScaleCandidate = recommendedKey === 'scale';
+
+  const annualLeakage = useMemo(() =>
+    calculateAnnualLeakage(monthlyLeakage),
+    [monthlyLeakage]
+  );
 
   const handleChange = (field: keyof CalculatorData, value: number) => {
+    // If user clears the input (NaN), usually we might want to handle it gracefully, 
+    // but RangeControl usually ensures a number. 
+    // If it comes from the text input part of RangeControl, it might be partial.
     if (isNaN(value)) return;
+
     const newData = { ...localData, [field]: value };
     setLocalData(newData);
 
+    // Validate single field
     try {
       CalculatorSchema.shape[field].parse(value);
       setErrors(prev => ({ ...prev, [field]: undefined }));
     } catch (e: any) {
-      if (e.errors && e.errors[0]) setErrors(prev => ({ ...prev, [field]: e.errors[0].message }));
+      // Very basic Zod error extraction for single field
+      if (e.errors && e.errors[0]) {
+        setErrors(prev => ({ ...prev, [field]: e.errors[0].message }));
+      }
     }
+
+    // Optimistic update to parent
     onUpdate(newData);
   };
 
   const handleNext = () => {
     const result = CalculatorSchema.safeParse(localData);
-    if (result.success) onNext();
-    else {
+    if (result.success) {
+      onNext();
+    } else {
       const fieldErrors: any = {};
-      result.error.errors.forEach(err => { if (err.path[0]) fieldErrors[err.path[0]] = err.message; });
+      result.error.errors.forEach(err => {
+        if (err.path[0]) fieldErrors[err.path[0]] = err.message;
+      });
       setErrors(fieldErrors);
     }
   };
 
   return (
     <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-      <div className="text-center mb-10 max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-300 text-xs font-mono uppercase tracking-wider mb-4">
-          Package-qualified sales funnel
-        </div>
-        <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
-          Recover missed inquiries and <span className="text-blue-500">book more clients</span>
+      <div className="text-center mb-10">
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
+          System Leakage <span className="text-blue-500">Calculator</span>
         </h1>
-        <p className="text-slate-400 text-base md:text-lg max-w-3xl mx-auto">
-          Flowstack installs approved automation systems for lead capture, follow-up, booking, routing, and reporting.
-          Start by sizing the leak in your current process.
+        <p className="text-slate-400 font-mono text-sm">
+          PROTOCOL: IDENTIFY REVENUE ATTRITION VECTORS
         </p>
       </div>
 
       <BentoGrid>
-        <BentoCard title="Business inputs" className="col-span-12 md:col-span-5 flex flex-col justify-center space-y-8">
+        {/* INPUTS */}
+        <BentoCard title="Parameters" className="col-span-12 md:col-span-5 flex flex-col justify-center space-y-8">
           <RangeControl
-            label="Messages / leads per month"
+            label="Deal Volume / Mo"
             value={localData.volume}
             onChange={(val) => handleChange('volume', val)}
             min={1}
@@ -86,7 +88,7 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
             error={errors.volume}
           />
           <RangeControl
-            label="Average deal value"
+            label="Avg Deal Value"
             value={localData.value}
             onChange={(val) => handleChange('value', val)}
             min={1000}
@@ -96,7 +98,7 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
             error={errors.value}
           />
           <RangeControl
-            label="Current close or booking rate"
+            label="Current Success Rate"
             value={localData.rate}
             onChange={(val) => handleChange('rate', val)}
             min={0}
@@ -107,147 +109,56 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
           />
         </BentoCard>
 
-        <BentoCard title="Revenue opportunity" className="col-span-12 md:col-span-7 bg-slate-900/80" accent="blue">
+        {/* METRICS DISPLAY */}
+        <BentoCard title="Real-time Telemetry" className="col-span-12 md:col-span-7 bg-slate-900/80" accent="blue">
           <div className="grid grid-cols-2 gap-4 h-full content-center">
             <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 relative overflow-hidden group">
-              <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors"><Activity size={16} /></div>
-              <div className="text-sm text-slate-400 font-bold font-mono mb-1">Annual revenue opportunity</div>
-              <div className="text-xl font-bold text-slate-200">{formatCurrency((localData.volume * localData.value) * 12)}</div>
-              <div className="text-xs text-slate-500 mt-2 font-mono">If your funnel was healthy</div>
+              <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors">
+                <Activity size={16} />
+              </div>
+              <div className="text-sm text-slate-400 font-bold font-mono mb-1">RAW REVENUE POTENTIAL</div>
+              <div className="text-xl font-bold text-slate-200">
+                {formatCurrency((localData.volume * localData.value) * 12)}
+              </div>
+              <div className="text-xs text-slate-500 mt-2 font-mono">ANNUAL RUN RATE</div>
             </div>
 
             <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 relative overflow-hidden group">
-              <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors"><Layers size={16} /></div>
-              <div className="text-sm text-slate-400 font-bold font-mono mb-1">Leakage factor</div>
-              <div className="text-xl font-bold text-slate-200">{100 - localData.rate}%</div>
-              <div className="text-xs text-slate-500 mt-2 font-mono">Uncaptured value</div>
+              <div className="absolute top-2 right-2 text-slate-700 group-hover:text-blue-500 transition-colors">
+                <Layers size={16} />
+              </div>
+              <div className="text-sm text-slate-400 font-bold font-mono mb-1">ATTRITION FACTOR</div>
+              <div className="text-xl font-bold text-slate-200">
+                {100 - localData.rate}%
+              </div>
+              <div className="text-xs text-slate-500 mt-2 font-mono">SYSTEM INEFFICIENCY</div>
             </div>
 
             <div className="col-span-2 p-6 rounded-lg bg-slate-950/50 border border-slate-800/50 relative overflow-hidden group mt-2">
               <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
-              <div className="absolute top-4 right-4 text-red-500 animate-pulse-slow"><TrendingDown size={24} /></div>
+              <div className="absolute top-4 right-4 text-red-500 animate-pulse-slow">
+                <TrendingDown size={24} />
+              </div>
               <div className="relative z-10">
                 <div className="text-sm text-red-400 font-bold font-mono mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  Estimated annual leakage
+                  CRITICAL LEAKAGE DETECTED
                 </div>
-                <div className="text-4xl md:text-5xl font-bold text-white tracking-tighter tabular-nums">{formatCurrency(annualLeakage)}</div>
+                <div className="text-4xl md:text-5xl font-bold text-white tracking-tighter tabular-nums">
+                  {formatCurrency(annualLeakage)}
+                </div>
                 <div className="text-xs text-slate-400 mt-2 font-mono">
-                  Used to recommend the right package, not oversell the biggest one
+                  ANNUAL COMMISSION LEAKAGE (ESTIMATED @ 20% COMMISSION)
                 </div>
               </div>
             </div>
           </div>
         </BentoCard>
 
-        <BentoCard title="Recommended package right now" className="col-span-12 md:col-span-4" accent="green">
-          <div className="space-y-4">
-            <div>
-              <div className="text-2xl font-bold text-white">{recommended.name}</div>
-              <div className="text-sm text-emerald-400 mt-1">{recommended.tagline}</div>
-            </div>
-
-            <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
-              <div className="text-xs font-mono uppercase text-slate-500 mb-2">Pricing</div>
-              <div className="text-white font-semibold">{recommended.setup}</div>
-              <div className="text-slate-300">{recommended.monthly}</div>
-              {recommended.altPricing && <div className="text-xs text-slate-500 mt-2">{recommended.altPricing}</div>}
-            </div>
-
-            {isScaleCandidate ? (
-              <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                <div className="text-xs font-mono uppercase text-amber-300 mb-2 flex items-center gap-2">
-                  <AlertTriangle size={14} />
-                  Scale boundary rule
-                </div>
-                <div className="text-sm text-slate-300 leading-6">
-                  Scale is the highest standard package. If your intake shows scope beyond these bounded limits,
-                  the recommendation moves to <span className="text-white font-semibold">Custom / Enterprise</span>.
-                </div>
-                <ul className="mt-3 space-y-1 text-xs text-slate-400">
-                  <li>Up to {scaleBoundaries.leadSources} lead sources</li>
-                  <li>Up to {scaleBoundaries.offers} offers or booking outcomes</li>
-                  <li>Up to {scaleBoundaries.pipelines} pipelines</li>
-                  <li>Up to {scaleBoundaries.sequences} follow-up sequences</li>
-                </ul>
-              </div>
-            ) : null}
-
-            <div className="space-y-2">
-              {recommended.bestFor.map(item => (
-                <div key={item} className="flex items-start gap-2 text-sm text-slate-300">
-                  <CheckCircle2 size={16} className="text-emerald-400 mt-0.5 shrink-0" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        </BentoCard>
-
-        <BentoCard title="Package comparison" className="col-span-12 md:col-span-8">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b border-slate-800">
-                  <th className="py-3 text-slate-500 font-mono uppercase text-xs">Category</th>
-                  {packageOrder.map((key) => <th key={key} className="py-3 px-2 text-white">{serviceCatalog[key].name}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {packageComparisonRows.map((row) => (
-                  <tr key={row.label} className="border-b border-slate-900">
-                    <td className="py-3 text-slate-400">{row.label}</td>
-                    {packageOrder.map((key) => <td key={key} className="py-3 px-2 text-slate-300">{row.values[key]}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </BentoCard>
-
-        <BentoCard title="Proof by use case" className="col-span-12 md:col-span-7" accent="blue">
-          <div className="grid md:grid-cols-3 gap-4">
-            {proofExamples.map((item) => (
-              <div key={item.niche} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="text-xs font-mono uppercase text-blue-300">{item.niche}</div>
-                <div className="text-white font-semibold">{item.result}</div>
-                <div className="text-sm text-slate-400">{item.details}</div>
-              </div>
-            ))}
-          </div>
-        </BentoCard>
-
-        <BentoCard title="What happens after you book" className="col-span-12 md:col-span-5">
-          <div className="space-y-4">
-            {rolloutSteps.map((step, index) => (
-              <div key={step} className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-mono flex items-center justify-center shrink-0">{index + 1}</div>
-                <div className="text-sm text-slate-300">{step}</div>
-              </div>
-            ))}
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 flex gap-3 items-start">
-              <CalendarCheck2 className="text-emerald-400 shrink-0 mt-0.5" size={18} />
-              <div className="text-sm text-slate-300">
-                The goal is not just to explain packages. It is to move you into a clean setup and launch path.
-              </div>
-            </div>
-          </div>
-        </BentoCard>
-
-        <BentoCard title="What to prepare before setup" className="col-span-12" accent="green">
-          <div className="grid md:grid-cols-5 gap-3">
-            {onboardingChecklist.map((item) => (
-              <div key={item} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300 flex gap-2 items-start">
-                <ShieldCheck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </BentoCard>
-
+        {/* ACTIONS */}
         <div className="col-span-12 flex justify-end pt-4">
           <Button onClick={handleNext} className="w-full md:w-auto">
-            Continue to recommendation <ArrowRight className="ml-2 h-4 w-4" />
+            INITIATE INGEST PROTOCOL <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </BentoGrid>
