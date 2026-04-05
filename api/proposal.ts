@@ -4,6 +4,8 @@
  *
  * Pass 1 (full report): Scout -> Qwen -> 8B
  * Pass 2 (polish exec+solution only): Qwen -> Scout -> 8B
+ *
+ * Security: All ingest fields sanitized before prompt insertion.
  */
 
 type GroqError = {
@@ -41,6 +43,43 @@ const MODELS = {
   pass2Fallback2: "llama-3.1-8b-instant",
 } as const;
 
+// ─────────────────────────────────────────────────────────────
+// Security: Input sanitization
+// Prevents XSS payloads being reflected in proposal output,
+// and prevents prompt injection via user-controlled ingest fields.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Strip HTML tags and script-injection patterns from a string.
+ * Also removes newlines that could break out of prompt structure.
+ */
+function sanitizeForPrompt(value: unknown, maxLen = 200): string {
+  if (typeof value !== "string") return "";
+
+  return value
+    .replace(/<[^>]*>/g, "")                    // strip HTML/script tags
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")  // strip control chars
+    .replace(/\r?\n|\r/g, " ")                  // collapse newlines to spaces
+    .replace(/\s+/g, " ")                       // normalize whitespace
+    .trim()
+    .slice(0, maxLen);
+}
+
+/**
+ * Sanitize a numeric metric value.
+ * Returns 0 for NaN, Infinity, or negative values rather than
+ * letting non-finite numbers propagate into the proposal text as "NaN".
+ */
+function sanitizeMetric(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────────────────────
+
 function safeJsonParse<T>(v: any): T | null {
   try {
     if (typeof v === "string") return JSON.parse(v) as T;
@@ -52,8 +91,8 @@ function safeJsonParse<T>(v: any): T | null {
 }
 
 function money(n: number | undefined) {
-  const x = Number(n || 0);
-  return x > 0 ? `₱${x.toLocaleString("en-PH", { maximumFractionDigits: 0 })}` : "N/A";
+  const x = sanitizeMetric(n);
+  return x > 0 ? `₱${x.toLocaleString("en-PH", { maximumFractionDigits: 0 })}` : "₱0";
 }
 
 function extractRetryAfterSeconds(msg: string | undefined): number | null {
@@ -194,18 +233,30 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const parsed = safeJsonParse<RequestPayload>(req.body) || (req.body as RequestPayload) || {};
+  // Guard: normalise body defensively in case body parser produced non-object
+  const rawBody = req.body;
+  const bodyObj =
+    rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+      ? rawBody
+      : safeJsonParse<RequestPayload>(rawBody) || {};
+
+  const parsed = bodyObj as RequestPayload;
   const payload = parsed.payload || {};
-  const requestId = payload.requestId || `fs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const requestId = sanitizeForPrompt(payload.requestId, 100) || `fs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
   const ingest = payload.ingest || {};
   const metrics = payload.calculatedMetrics || {};
 
-  const agency = ingest.agencyName || "Lead";
-  const niche = ingest.niche || "Unknown";
-  const bottleneck = ingest.bottleneck || "Not provided";
-  const monthly = Number(metrics.monthlyLeakage || 0) || 0;
-  const annual = Number(metrics.annualLeakage || 0) || 0;
+  // Sanitize ALL user-controlled fields before they enter the LLM prompt.
+  // This prevents:
+  //   1. Prompt injection (e.g. agencyName = "IGNORE INSTRUCTIONS")
+  //   2. XSS payloads being echoed in the proposal markdown response
+  //   3. Newline injection breaking the prompt structure
+  const agency = sanitizeForPrompt(ingest.agencyName, 150) || "Lead";
+  const niche = sanitizeForPrompt(ingest.niche, 100) || "Unknown";
+  const bottleneck = sanitizeForPrompt(ingest.bottleneck, 300) || "Not provided";
+  const monthly = sanitizeMetric(metrics.monthlyLeakage);
+  const annual = sanitizeMetric(metrics.annualLeakage);
 
   const pass1Prompt = `
 Generate a concise Markdown diagnostic report.
@@ -223,7 +274,7 @@ Use these headings (exact):
 ## Executive Summary
 ## Diagnosis
 ## Revenue at Risk
-## SOLUTION ARCHITECTURE: “FlowStackOS 3-Module System”
+## SOLUTION ARCHITECTURE: "FlowStackOS 3-Module System"
 ## Next Steps
 
 Context:
@@ -255,8 +306,8 @@ Niche: ${niche}
       payload: {
         proposalMarkdown:
           "## Executive Summary\n- Proposal generation failed temporarily.\n\n## Next Steps\n- Retry in a few minutes.\n",
-        ingest: { ...ingest, bottleneck },
-        calculatedMetrics: { ...metrics, monthlyLeakage: monthly, annualLeakage: annual },
+        ingest: { agencyName: agency, niche, bottleneck },
+        calculatedMetrics: { monthlyLeakage: monthly, annualLeakage: annual },
       },
     });
     return;
@@ -299,8 +350,8 @@ ${sol}
     success: true,
     payload: {
       proposalMarkdown: finalMarkdown,
-      ingest: { ...ingest, bottleneck },
-      calculatedMetrics: { ...metrics, monthlyLeakage: monthly, annualLeakage: annual },
+      ingest: { agencyName: agency, niche, bottleneck },
+      calculatedMetrics: { monthlyLeakage: monthly, annualLeakage: annual },
     },
     debug: {
       requestId,
