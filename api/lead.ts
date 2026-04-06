@@ -380,10 +380,12 @@ async function findLeadRecord(baseId: string, pat: string, leadId: string, email
   if (safeLeadId) {
     // Escape remaining quotes after sanitization (belt-and-suspenders)
     const escapedId = safeLeadId.replace(/"/g, '\\"');
-    filters.push(`OR({lead_id}="${escapedId}",{Lead ID}="${escapedId}")`);
+    // MODIFIED: Expanded checks for common Lead ID field names
+    filters.push(`OR({Lead ID}="${escapedId}",{lead_id}="${escapedId}",{ID}="${escapedId}",{LeadId}="${escapedId}")`);
   }
   if (safeEmail) {
-    filters.push(`OR(LOWER({email})="${safeEmail}",LOWER({Email})="${safeEmail}")`);
+    // MODIFIED: Expanded checks for common Email field names
+    filters.push(`OR(LOWER({Email})="${safeEmail}",LOWER({email})="${safeEmail}",LOWER({"Contact Email"})="${safeEmail}")`);
   }
 
   if (filters.length === 0) return null;
@@ -595,11 +597,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       event_name: normalizedBody.metadata.event_name,
       email: emailResult,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Direct lead ingest error:', error);
+
+    let errorMessage: string;
+    let errorDetails: any; // Allow details to be a more complex object if available
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || error; // Include stack for debugging, or the error object
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+      // Handle custom error objects that might not be instances of Error
+      errorMessage = (error as { message: string }).message;
+      errorDetails = error;
+    } else {
+      errorMessage = 'An unknown server error occurred';
+      errorDetails = String(error);
+    }
+
+    // Ensure the error response is always a well-formed JSON 500
     return res.status(500).json({
       error: 'Direct lead ingest failed',
-      details: String(error),
+      details: errorMessage, // Use parsed message for 'details'
+      rawError: errorDetails // Add rawError for more context in logs/debugging
     });
   }
 }
