@@ -91,12 +91,20 @@ const App: React.FC = () => {
             <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-[0_0_15px_-3px_rgba(59,130,246,0.6)]"><Zap className="text-white fill-white" size={16} /></div>
             <span className="font-bold tracking-tight text-lg">Flowstack <span className="text-slate-500">Sales OS</span></span>
           </div>
-          <div className="hidden md:flex items-center gap-1 text-xs font-mono text-slate-500">
-            <span className={`px-2 py-1 rounded ${appState.step === 'calculator' ? 'bg-blue-900/30 text-blue-400' : ''}`}>1. Size the leak</span>
-            <span className="text-slate-800">/</span>
-            <span className={`px-2 py-1 rounded ${appState.step === 'ingest' ? 'bg-blue-900/30 text-blue-400' : ''}`}>2. Qualify fit</span>
-            <span className="text-slate-800">/</span>
-            <span className={`px-2 py-1 rounded ${appState.step === 'proposal' ? 'bg-blue-900/30 text-blue-400' : ''}`}>3. Get package</span>
+          <div className="flex items-center gap-3">
+            <a
+              href="/dashboard/portal.html"
+              className="inline-flex items-center rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-3 py-2 text-xs font-mono uppercase tracking-[0.16em] text-cyan-300 transition hover:border-cyan-300/50 hover:bg-cyan-300/15 hover:text-cyan-200"
+            >
+              Client Dashboard
+            </a>
+            <div className="hidden md:flex items-center gap-1 text-xs font-mono text-slate-500">
+              <span className={`px-2 py-1 rounded ${appState.step === 'calculator' ? 'bg-blue-900/30 text-blue-400' : ''}`}>1. Size the leak</span>
+              <span className="text-slate-800">/</span>
+              <span className={`px-2 py-1 rounded ${appState.step === 'ingest' ? 'bg-blue-900/30 text-blue-400' : ''}`}>2. Qualify fit</span>
+              <span className="text-slate-800">/</span>
+              <span className={`px-2 py-1 rounded ${appState.step === 'proposal' ? 'bg-blue-900/30 text-blue-400' : ''}`}>3. Get package</span>
+            </div>
           </div>
         </div>
       </header>

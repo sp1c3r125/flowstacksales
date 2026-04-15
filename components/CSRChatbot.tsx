@@ -53,11 +53,12 @@ export const CSRChatbot: React.FC = () => {
         })
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        throw new Error(data?.error || `API Error: ${response.status}`);
       }
 
-      const data = await response.json();
       const assistantReply = data?.choices?.[0]?.message?.content || 'I can help with Flowstack OS, packages, pricing, fit, and setup. For the exact recommendation, use the form above.';
 
       setMessages((prev) => [
