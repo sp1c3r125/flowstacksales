@@ -69,11 +69,51 @@
   .chip-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
   
   .donut-ring { transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .hidden { display: none; }
 </style>
 </head>
 <body class="min-h-screen">
 
-<div class="relative z-10">
+<div id="portal-gate" class="min-h-screen flex items-center justify-center px-6">
+  <div class="glass w-full max-w-xl rounded-2xl p-8">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded bg-cyan-500 flex items-center justify-center">
+        <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div>
+        <div class="font-bold tracking-tight">FLOWSTACK / CLIENT DASHBOARD</div>
+        <div class="label-caps mt-1">Protected access required</div>
+      </div>
+    </div>
+
+    <h1 class="text-3xl font-extrabold tracking-tight mb-3">Enter Access Token</h1>
+    <p class="text-sm text-ink-2 mb-6">This dashboard requires a valid client token before any portal content is shown.</p>
+
+    <form id="portal-gate-form" class="space-y-4">
+      <div>
+        <label for="portal-token" class="label-caps block mb-2">Client Token</label>
+        <input
+          id="portal-token"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          class="w-full rounded-xl border border-cyan/20 bg-navy-900 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan"
+          placeholder="Enter your access token"
+        />
+      </div>
+      <div id="portal-gate-error" class="hidden rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"></div>
+      <button
+        id="portal-gate-submit"
+        type="submit"
+        class="w-full rounded-xl border border-cyan/30 bg-cyan/15 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan transition hover:bg-cyan/20"
+      >
+        Unlock Dashboard
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="portal-shell" class="relative z-10 hidden">
   <header class="border-b border-white/10 bg-navy-950/50 backdrop-blur-md">
     <div class="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -229,6 +269,96 @@
     </div>
   </main>
 </div>
+
+<script>
+  (function () {
+    const gate = document.getElementById('portal-gate');
+    const shell = document.getElementById('portal-shell');
+    const form = document.getElementById('portal-gate-form');
+    const input = document.getElementById('portal-token');
+    const errorBox = document.getElementById('portal-gate-error');
+    const submitButton = document.getElementById('portal-gate-submit');
+    const storageKey = 'flowstack_portal_token';
+
+    function setError(message) {
+      if (!message) {
+        errorBox.textContent = '';
+        errorBox.classList.add('hidden');
+        return;
+      }
+      errorBox.textContent = message;
+      errorBox.classList.remove('hidden');
+    }
+
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      submitButton.textContent = isLoading ? 'Validating...' : 'Unlock Dashboard';
+      submitButton.classList.toggle('opacity-60', isLoading);
+      submitButton.classList.toggle('cursor-not-allowed', isLoading);
+    }
+
+    function unlockPortal(token) {
+      sessionStorage.setItem(storageKey, token);
+      gate.classList.add('hidden');
+      shell.classList.remove('hidden');
+    }
+
+    async function validateToken(token) {
+      const response = await fetch('/api/portal-data?token=' + encodeURIComponent(token), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {}
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.message || payload?.error || 'Invalid or missing portal token.');
+      }
+
+      return payload;
+    }
+
+    async function tryUnlock(token) {
+      if (!token) return;
+      setError('');
+      setLoading(true);
+      try {
+        await validateToken(token);
+        unlockPortal(token);
+      } catch (error) {
+        sessionStorage.removeItem(storageKey);
+        setError(error instanceof Error ? error.message : 'Token validation failed.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      const token = (input.value || '').trim();
+      if (!token) {
+        setError('Enter a valid token to continue.');
+        return;
+      }
+      tryUnlock(token);
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const queryToken = params.get('token');
+    const savedToken = sessionStorage.getItem(storageKey);
+
+    if (queryToken) {
+      input.value = queryToken;
+      tryUnlock(queryToken);
+    } else if (savedToken) {
+      input.value = savedToken;
+      tryUnlock(savedToken);
+    }
+  })();
+</script>
 
 </body>
 </html>
