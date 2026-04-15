@@ -123,6 +123,13 @@
         <span class="font-bold text-sm tracking-tight">FLOWSTACK <span class="text-ink-4 mx-1">/</span> <span class="text-cyan">PALAWAN HORIZONS</span></span>
       </div>
       <div class="flex items-center gap-4">
+        <button
+          id="portal-logout"
+          type="button"
+          class="hidden rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 transition hover:bg-amber-400/15"
+        >
+          Logout
+        </button>
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pdot shadow-[0_0_8px_#34d399]"></span>
         <span class="label-caps !text-emerald-400">System Live</span>
       </div>
@@ -278,6 +285,7 @@
     const input = document.getElementById('portal-token');
     const errorBox = document.getElementById('portal-gate-error');
     const submitButton = document.getElementById('portal-gate-submit');
+    const logoutButton = document.getElementById('portal-logout');
     const storageKey = 'flowstack_portal_token';
 
     function setError(message) {
@@ -301,6 +309,16 @@
       sessionStorage.setItem(storageKey, token);
       gate.classList.add('hidden');
       shell.classList.remove('hidden');
+      logoutButton.classList.remove('hidden');
+    }
+
+    function lockPortal() {
+      sessionStorage.removeItem(storageKey);
+      input.value = '';
+      setError('');
+      shell.classList.add('hidden');
+      gate.classList.remove('hidden');
+      logoutButton.classList.add('hidden');
     }
 
     async function validateToken(token) {
@@ -344,6 +362,10 @@
         return;
       }
       tryUnlock(token);
+    });
+
+    logoutButton.addEventListener('click', function () {
+      lockPortal();
     });
 
     const params = new URLSearchParams(window.location.search);
