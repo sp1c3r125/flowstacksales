@@ -126,12 +126,12 @@ export const CSRChatbot: React.FC = () => {
                   <div
                     className={`max-w-[84%] rounded-2xl border p-3 ${
                       isUser
-                        ? 'border-blue-400/25 bg-blue-500/14 text-blue-50'
+                        ? 'border-blue-300/45 bg-blue-950 text-white shadow-[0_10px_30px_rgba(30,64,175,0.28)]'
                         : 'border-cyan-400/14 bg-[linear-gradient(135deg,rgba(8,24,47,0.82),rgba(3,11,29,0.9))] text-slate-100'
                     }`}
                   >
                     <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
-                    <p className={`mt-1 text-[11px] ${isUser ? 'text-blue-100/70' : 'text-cyan-100/42'}`}>
+                    <p className={`mt-1 text-[11px] ${isUser ? 'text-blue-100/80' : 'text-cyan-100/42'}`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
