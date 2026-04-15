@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Flowstack Intelligence Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          syne: ['Syne', 'sans-serif'],
+          mono: ['"DM Mono"', 'monospace'],
+        },
+        colors: {
+          navy: { 950:'#020b18', 900:'#04111f', 800:'#071525' },
+          cyan: '#22d3ee',
+          ink:  { 1:'#dff0f8', 2:'#a5d7ef', 3:'#7fb8d4', 4:'#3d6f8a' },
+        },
+        animation: {
+          'fade-up': 'fadeUp 0.5s ease-out both',
+          'pdot': 'pulseDot 2s ease-in-out infinite',
+        },
+        keyframes: {
+          fadeUp: { from:{opacity:'0',transform:'translateY(12px)'}, to:{opacity:'1',transform:'translateY(0)'} },
+          pulseDot: { '0%,100%':{opacity:'1'}, '50%':{opacity:'.4'} },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background: #020b18; color: #dff0f8; font-family: 'Syne', sans-serif; -webkit-font-smoothing: antialiased; }
+  .glass {
+    background: rgba(7, 21, 37, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(34, 211, 238, 0.12);
+  }
+  .label-caps {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #a5d7ef; /* Brightened for readability */
+  }
+  .data-val {
+    font-family: 'DM Mono', monospace;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+  .chip {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .chip-cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); }
+  .chip-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+  
+  .donut-ring { transform: rotate(-90deg); transform-origin: 50% 50%; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="relative z-10">
+  <header class="border-b border-white/10 bg-navy-950/50 backdrop-blur-md">
+    <div class="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-cyan-500 flex items-center justify-center">
+            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <span class="font-bold text-sm tracking-tight">FLOWSTACK <span class="text-ink-4 mx-1">/</span> <span class="text-cyan">PALAWAN HORIZONS</span></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pdot shadow-[0_0_8px_#34d399]"></span>
+        <span class="label-caps !text-emerald-400">System Live</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1440px] mx-auto px-6 py-10">
+    
+    <div class="mb-10 animate-fade-up">
+      <h1 class="text-4xl font-extrabold tracking-tight mb-2">Command Center</h1>
+      <p class="label-caps !text-ink-3">Live Automation & Lead Intelligence Oversight</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+      <div class="glass p-6 rounded-xl animate-fade-up" style="animation-delay: 0.1s">
+        <p class="label-caps mb-4">Conversion Rate</p>
+        <p class="data-val text-5xl text-cyan mb-4">84%</p>
+        <div class="flex items-center gap-2">
+            <span class="text-emerald-400 font-mono text-xs font-bold">↑ 12%</span>
+            <span class="font-mono text-[11px] text-ink-2 font-medium">vs last month</span>
+        </div>
+      </div>
+
+      <div class="glass p-6 rounded-xl animate-fade-up" style="animation-delay: 0.15s">
+        <p class="label-caps mb-4">Lead Velocity</p>
+        <p class="data-val text-5xl mb-4">42</p>
+        <p class="font-mono text-[11px] text-ink-2 font-medium">New leads this week</p>
+      </div>
+
+      <div class="glass p-6 rounded-xl animate-fade-up" style="animation-delay: 0.2s">
+        <p class="label-caps mb-4">Total Inquiries</p>
+        <p class="data-val text-5xl mb-4">1,204</p>
+        <p class="font-mono text-[11px] text-ink-2 font-medium">System lifetime total</p>
+      </div>
+
+      <div class="glass p-6 rounded-xl animate-fade-up" style="animation-delay: 0.25s">
+        <p class="label-caps mb-4">Automation Savings</p>
+        <p class="data-val text-5xl text-emerald-400 mb-4">128<span class="text-2xl ml-1">h</span></p>
+        <p class="font-mono text-[11px] text-ink-2 font-medium">Human labor offset</p>
+      </div>
+
+      <div class="glass p-6 rounded-xl animate-fade-up border-amber-500/20" style="animation-delay: 0.3s">
+        <p class="label-caps mb-4">Pending Action</p>
+        <p class="data-val text-5xl text-amber-400 mb-4">03</p>
+        <p class="font-mono text-[11px] text-amber-200/80 font-medium italic">Awaiting manual touch</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <div class="lg:col-span-8 glass rounded-xl overflow-hidden animate-fade-up" style="animation-delay: 0.4s">
+        <div class="px-6 py-5 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+            <h3 class="label-caps">Recent Intelligence Stream</h3>
+            <div class="text-[10px] font-mono text-cyan/60 font-bold tracking-widest uppercase">Live Refresh</div>
+        </div>
+        <table class="w-full text-left">
+            <thead>
+                <tr class="label-caps !text-[10px] text-ink-4 border-b border-white/5">
+                    <th class="px-6 py-4">Client / Organization</th>
+                    <th class="px-6 py-4">Channel</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4 text-right">Date</th>
+                </tr>
+            </thead>
+            <tbody class="font-mono text-xs text-ink-1">
+                <tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                    <td class="px-6 py-5">
+                        <div class="text-white font-syne font-bold text-[13px]">Maria Santos</div>
+                        <div class="text-ink-3 text-[10px] uppercase tracking-wider mt-0.5">Santos Logistics</div>
+                    </td>
+                    <td class="px-6 py-5 text-ink-2">Facebook Ads</td>
+                    <td class="px-6 py-5"><span class="chip chip-green">Qualified</span></td>
+                    <td class="px-6 py-5 text-right text-ink-4">Apr 07, 2026</td>
+                </tr>
+                <tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                    <td class="px-6 py-5">
+                        <div class="text-white font-syne font-bold text-[13px]">Kevin Lee</div>
+                        <div class="text-ink-3 text-[10px] uppercase tracking-wider mt-0.5">Lee Real Estate</div>
+                    </td>
+                    <td class="px-6 py-5 text-ink-2">Website Form</td>
+                    <td class="px-6 py-5"><span class="chip chip-cyan">In Progress</span></td>
+                    <td class="px-6 py-5 text-right text-ink-4">Apr 07, 2026</td>
+                </tr>
+                <tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                    <td class="px-6 py-5">
+                        <div class="text-white font-syne font-bold text-[13px]">Carlos Mendez</div>
+                        <div class="text-ink-3 text-[10px] uppercase tracking-wider mt-0.5">Metro Builders</div>
+                    </td>
+                    <td class="px-6 py-5 text-ink-2">Referral</td>
+                    <td class="px-6 py-5"><span class="chip chip-amber">Action Needed</span></td>
+                    <td class="px-6 py-5 text-right text-ink-4">Apr 05, 2026</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+
+      <div class="lg:col-span-4 flex flex-col gap-6 animate-fade-up" style="animation-delay: 0.5s">
+        
+        <div class="glass p-6 rounded-xl">
+          <h3 class="label-caps mb-6">Lead Distribution</h3>
+          <div class="flex items-center gap-8">
+            <div class="relative w-24 h-24">
+              <svg width="96" height="96" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#22d3ee" stroke-width="12" stroke-dasharray="170 251" class="donut-ring"/>
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center font-mono text-[10px] text-ink-2">APRIL</div>
+            </div>
+            <div class="flex-1 space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="font-mono text-[11px] text-ink-2">Facebook</span>
+                <span class="font-mono text-[11px] font-bold text-cyan">68%</span>
+              </div>
+              <div class="w-full bg-white/5 h-1 rounded-full"><div class="bg-cyan w-[68%] h-full rounded-full"></div></div>
+              
+              <div class="flex justify-between items-center pt-2">
+                <span class="font-mono text-[11px] text-ink-2">Website</span>
+                <span class="font-mono text-[11px] font-bold">22%</span>
+              </div>
+              <div class="w-full bg-white/5 h-1 rounded-full"><div class="bg-white/20 w-[22%] h-full rounded-full"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass p-6 rounded-xl">
+          <h3 class="label-caps mb-6">Workflow Health</h3>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center p-3 bg-white/[0.03] rounded-lg border border-white/5">
+              <span class="text-xs font-semibold">Lead Intake CRM</span>
+              <span class="chip chip-green"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Active</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-white/[0.03] rounded-lg border border-white/5">
+              <span class="text-xs font-semibold">Follow-up Engine</span>
+              <span class="chip chip-green"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Active</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-white/[0.03] rounded-lg border border-white/5">
+              <span class="text-xs font-semibold">API Connectivity</span>
+              <span class="chip chip-green"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Stable</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
