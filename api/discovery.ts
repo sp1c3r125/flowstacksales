@@ -1,20 +1,59 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import mammoth from "mammoth";
+import { PDFParse } from "pdf-parse";
 
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "512kb",
+      sizeLimit: "6mb",
     },
   },
 };
 
-function validateOperatorKey(req: VercelRequest): boolean {
-  const header = req.headers["x-operator-key"] as string | undefined;
-  const query = req.query["key"] as string | undefined;
-  const expected = process.env.OPERATOR_KEY;
-  if (!expected) return false;
-  const provided = (header || query || "").trim();
-  return provided.length > 0 && provided === expected;
+type DiscoverySection = "journey" | "pain" | "tools";
+
+type UploadedDiscoveryFile = {
+  name?: string;
+  type?: string;
+  section?: string;
+  content_base64?: string;
+};
+
+function resolveDiscoveryTokenRegistry(): Record<string, string> {
+  try {
+    const singleToken = process.env.DISCOVERY_ACCESS_TOKEN;
+    if (singleToken) {
+      const tenantId = process.env.DISCOVERY_TENANT_ID || "shared";
+      return { [singleToken]: tenantId };
+    }
+
+    const raw = process.env.DISCOVERY_TOKENS || process.env.PORTAL_TOKENS;
+    if (raw) return JSON.parse(raw);
+  } catch {}
+
+  return { "demo-client": "demo" };
+}
+
+function resolveAuthorizedTenant(req: VercelRequest): string | null {
+  const authHeader = req.headers["authorization"] as string | undefined;
+  const headerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : ((req.headers["x-discovery-token"] as string | undefined) ||
+        (req.headers["x-portal-token"] as string | undefined));
+  const queryToken =
+    (req.query["token"] as string | undefined) || (req.query["key"] as string | undefined);
+  const provided = String(headerToken || queryToken || "").trim();
+
+  const operatorKey = process.env.OPERATOR_KEY;
+  if (operatorKey && provided && provided === operatorKey) {
+    return "operator";
+  }
+
+  const clean = provided.replace(/[^A-Za-z0-9_\-]/g, "").slice(0, 128);
+  if (clean.length < 3) return null;
+
+  const registry = resolveDiscoveryTokenRegistry();
+  return registry[clean] || null;
 }
 
 const TEMPLATES: Record<string, { name: string; description: string; triggers: string[]; solves: string[] }> = {
@@ -185,6 +224,111 @@ function buildManualSteps(templateIds: string[], toolsText: string): string {
   }
 
   return steps.join("\n");
+}
+
+function inferSectionFromFileName(fileName: string): DiscoverySection {
+  const normalized = fileName.toLowerCase();
+  if (/pain|problem|issue|bottleneck/.test(normalized)) return "pain";
+  if (/tool|stack|system|crm|inventory/.test(normalized)) return "tools";
+  return "journey";
+}
+
+function normalizeDiscoverySection(value: unknown, fileName: string): DiscoverySection {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pain" || normalized === "tools" || normalized === "journey") {
+    return normalized;
+  }
+  return inferSectionFromFileName(fileName);
+}
+
+function looksLikeJson(mimeType: string, fileName: string): boolean {
+  return /json/i.test(mimeType) || /\.json$/i.test(fileName);
+}
+
+function looksLikeDocx(mimeType: string, fileName: string): boolean {
+  return /wordprocessingml|officedocument/i.test(mimeType) || /\.docx$/i.test(fileName);
+}
+
+function looksLikePdf(mimeType: string, fileName: string): boolean {
+  return /pdf/i.test(mimeType) || /\.pdf$/i.test(fileName);
+}
+
+function decodeBase64ToBuffer(contentBase64: string): Buffer {
+  const normalized = contentBase64.includes(",") ? contentBase64.split(",").pop() || "" : contentBase64;
+  return Buffer.from(normalized, "base64");
+}
+
+async function extractTextFromUploadedFile(file: UploadedDiscoveryFile): Promise<string> {
+  const fileName = String(file.name || "upload").slice(0, 120);
+  const mimeType = String(file.type || "");
+  const contentBase64 = String(file.content_base64 || "");
+  if (!contentBase64) return "";
+
+  const buffer = decodeBase64ToBuffer(contentBase64);
+  if (looksLikePdf(mimeType, fileName)) {
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      const result = await parser.getText();
+      return String(result.text || "").trim();
+    } finally {
+      if (typeof (parser as any).destroy === "function") {
+        await (parser as any).destroy();
+      }
+    }
+  }
+
+  if (looksLikeDocx(mimeType, fileName)) {
+    const result = await mammoth.extractRawText({ buffer });
+    return String(result.value || "").trim();
+  }
+
+  if (looksLikeJson(mimeType, fileName)) {
+    try {
+      return JSON.stringify(JSON.parse(buffer.toString("utf8")), null, 2);
+    } catch {
+      return buffer.toString("utf8").trim();
+    }
+  }
+
+  return buffer.toString("utf8").trim();
+}
+
+async function resolveDiscoveryInputs(body: Record<string, unknown>) {
+  const sections: Record<DiscoverySection, string[]> = {
+    journey: [String(body.journey_map || "").trim()],
+    pain: [String(body.pain_points || "").trim()],
+    tools: [String(body.tools_inventory || "").trim()],
+  };
+  const extractionSummary: Array<{ name: string; section: DiscoverySection; extracted_chars: number }> = [];
+  const extractionErrors: Array<{ name: string; message: string }> = [];
+  const uploadedFiles = Array.isArray(body.uploaded_files) ? (body.uploaded_files as UploadedDiscoveryFile[]) : [];
+
+  for (const uploadedFile of uploadedFiles) {
+    const name = String(uploadedFile?.name || "upload").slice(0, 120);
+    const section = normalizeDiscoverySection(uploadedFile?.section, name);
+    try {
+      const extractedText = await extractTextFromUploadedFile(uploadedFile);
+      if (extractedText) {
+        sections[section].push(`Source file: ${name}\n${extractedText}`);
+        extractionSummary.push({ name, section, extracted_chars: extractedText.length });
+      } else {
+        extractionErrors.push({ name, message: "No text could be extracted from the file." });
+      }
+    } catch (error) {
+      extractionErrors.push({
+        name,
+        message: error instanceof Error ? error.message : "File extraction failed.",
+      });
+    }
+  }
+
+  return {
+    journey: sections.journey.filter(Boolean).join("\n\n").trim(),
+    pain: sections.pain.filter(Boolean).join("\n\n").trim(),
+    tools: sections.tools.filter(Boolean).join("\n\n").trim(),
+    extractionSummary,
+    extractionErrors,
+  };
 }
 
 function buildConceptDoc(opts: {
@@ -389,50 +533,69 @@ async function saveToAirtable(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Operator-Key");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Discovery-Token, X-Operator-Key, X-Portal-Token");
 
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
 
-  if (!validateOperatorKey(req)) {
-    return res.status(401).json({ error: "UNAUTHORIZED", message: "Invalid operator key." });
+  const tenantId = resolveAuthorizedTenant(req);
+  if (!tenantId) {
+    return res.status(401).json({ error: "UNAUTHORIZED", message: "Invalid or missing discovery token." });
   }
+
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      authorized: true,
+      tenant_id: tenantId,
+      access_mode: tenantId === "operator" ? "operator" : "client",
+    });
+  }
+
+  if (req.method !== "POST") return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
 
   const body = req.body;
   if (!body || typeof body !== "object") {
     return res.status(400).json({ error: "INVALID_BODY", message: "Expected JSON body." });
   }
 
-  const tenantId = String(body.tenant_id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128);
-  if (!tenantId) {
+  const requestedTenantId = String(body.tenant_id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128);
+  const effectiveTenantId = tenantId === "operator" ? requestedTenantId : tenantId;
+  if (!effectiveTenantId) {
     return res.status(400).json({ error: "MISSING_TENANT_ID", message: "tenant_id is required." });
   }
 
-  const journey = String(body.journey_map || "").slice(0, 20000);
-  const pain = String(body.pain_points || "").slice(0, 10000);
-  const tools = String(body.tools_inventory || "").slice(0, 10000);
+  const resolvedInputs = await resolveDiscoveryInputs(body);
+  const journey = resolvedInputs.journey.slice(0, 20000);
+  const pain = resolvedInputs.pain.slice(0, 10000);
+  const tools = resolvedInputs.tools.slice(0, 10000);
 
   if (!journey) {
-    return res.status(400).json({ error: "MISSING_JOURNEY_MAP", message: "journey_map is required." });
+    return res.status(400).json({
+      error: "MISSING_JOURNEY_MAP",
+      message: "journey_map is required. Provide text directly or upload a supported file.",
+      extraction_errors: resolvedInputs.extractionErrors,
+    });
   }
 
   const generatedAt = new Date().toISOString();
-  const conceptMd = buildConceptDoc({ tenantId, journey, pain, tools, generatedAt });
+  const conceptMd = buildConceptDoc({ tenantId: effectiveTenantId, journey, pain, tools, generatedAt });
 
   const [emailSent, airtableResult] = await Promise.all([
-    emailConceptDoc(tenantId, conceptMd),
-    saveToAirtable(tenantId, journey, pain, tools, conceptMd),
+    emailConceptDoc(effectiveTenantId, conceptMd),
+    saveToAirtable(effectiveTenantId, journey, pain, tools, conceptMd),
   ]);
 
   return res.status(200).json({
     ok: true,
-    tenant_id: tenantId,
+    tenant_id: effectiveTenantId,
     generated_at: generatedAt,
     templates: inferTemplates(journey, pain, tools),
     steps_parsed: parseSteps(journey).length,
     email_sent: emailSent,
     airtable: airtableResult,
     concept_md: conceptMd,
+    extracted_files: resolvedInputs.extractionSummary,
+    extraction_errors: resolvedInputs.extractionErrors,
   });
 }

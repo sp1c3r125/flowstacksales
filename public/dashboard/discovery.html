@@ -3,40 +3,46 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Flowstack — Discovery Intake</title>
+<title>Flowstack Discovery Intake</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --navy:   #020b18;
-  --glass:  rgba(7,21,37,0.75);
-  --border: rgba(34,211,238,0.12);
-  --border-hi: rgba(34,211,238,0.22);
-  --cyan:   #22d3ee;
-  --ink1:   #dff0f8;
-  --ink2:   #a5d7ef;
-  --ink3:   #7fb8d4;
-  --ink4:   #3d6f8a;
-  --green:  #34d399;
-  --amber:  #fbbf24;
-  --red:    #f87171;
+  --navy: #020b18;
+  --glass: rgba(7, 21, 37, 0.75);
+  --border: rgba(34, 211, 238, 0.12);
+  --border-hi: rgba(34, 211, 238, 0.22);
+  --cyan: #22d3ee;
+  --ink1: #dff0f8;
+  --ink2: #a5d7ef;
+  --ink3: #7fb8d4;
+  --ink4: #3d6f8a;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
 }
 *, *::before, *::after { box-sizing: border-box; }
 body {
-  background: var(--navy); color: var(--ink1);
-  font-family: 'Syne', sans-serif;
+  background: var(--navy);
+  color: var(--ink1);
+  font-family: "Syne", sans-serif;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh; margin: 0;
+  min-height: 100vh;
+  margin: 0;
 }
 body::before {
-  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-  background-image: linear-gradient(rgba(34,211,238,.022) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(34,211,238,.022) 1px,transparent 1px);
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.022) 1px, transparent 1px);
   background-size: 58px 58px;
 }
-.blob { position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
-
+.blob { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
 .glass {
   background: var(--glass);
   backdrop-filter: blur(20px);
@@ -45,90 +51,166 @@ body::before {
   border-radius: 14px;
 }
 .glass-hi {
-  background: rgba(12,30,52,0.88);
+  background: rgba(12, 30, 52, 0.88);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-hi);
   border-radius: 14px;
 }
-
-.label { font-family:'DM Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--ink2); display:block; margin-bottom:7px; }
-.note  { font-family:'DM Mono',monospace; font-size:10px; color:var(--ink4); margin-top:5px; }
-
+.label {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink2);
+  display: block;
+  margin-bottom: 7px;
+}
+.note {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--ink4);
+  margin-top: 5px;
+}
 textarea, input[type=text], input[type=password] {
-  width:100%; background:rgba(7,21,37,.9);
-  border:1px solid rgba(34,211,238,.15); border-radius:8px;
-  color:var(--ink1); font-family:'DM Mono',monospace; font-size:12px;
-  padding:11px 13px; outline:none; resize:vertical;
-  transition:border-color .2s, box-shadow .2s;
-  line-height:1.6;
+  width: 100%;
+  background: rgba(7, 21, 37, 0.9);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 8px;
+  color: var(--ink1);
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  padding: 11px 13px;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  line-height: 1.6;
 }
 textarea:focus, input:focus {
-  border-color:rgba(34,211,238,.45);
-  box-shadow:0 0 0 3px rgba(34,211,238,.07);
+  border-color: rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.07);
 }
-textarea::placeholder, input::placeholder { color:rgba(34,211,238,.2); }
-
+textarea::placeholder, input::placeholder { color: rgba(34, 211, 238, 0.2); }
 .drop-zone {
-  border: 1px dashed rgba(34,211,238,.25); border-radius:8px;
-  padding:14px 16px; cursor:pointer; transition:all .2s;
-  background:rgba(34,211,238,.025); text-align:center;
+  border: 1px dashed rgba(34, 211, 238, 0.25);
+  border-radius: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(34, 211, 238, 0.025);
+  text-align: center;
 }
 .drop-zone:hover, .drop-zone.drag-over {
-  border-color:rgba(34,211,238,.5);
-  background:rgba(34,211,238,.06);
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(34, 211, 238, 0.06);
 }
-.drop-zone.has-file { border-style:solid; border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.04); }
-
+.drop-zone.has-file {
+  border-style: solid;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.04);
+}
 .btn {
-  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
-  border:none; border-radius:8px; cursor:pointer;
-  padding:11px 22px; letter-spacing:.02em; transition:opacity .2s, transform .1s;
+  font-family: "Syne", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 11px 22px;
+  letter-spacing: 0.02em;
+  transition: opacity 0.2s, transform 0.1s;
 }
-.btn:hover { opacity:.88; }
-.btn:active { transform:scale(.98); }
-.btn-primary { background:linear-gradient(135deg,#1e40af,#0e7490); color:#fff; }
-.btn-secondary { background:rgba(34,211,238,.1); color:var(--cyan); border:1px solid rgba(34,211,238,.2); }
-
-.chip { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:3px; font-family:'DM Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
-.chip-green { background:rgba(52,211,153,.12); color:var(--green); border:1px solid rgba(52,211,153,.22); }
-.chip-amber { background:rgba(251,191,36,.12);  color:var(--amber); border:1px solid rgba(251,191,36,.22); }
-.chip-blue  { background:rgba(34,211,238,.12);  color:var(--cyan);  border:1px solid rgba(34,211,238,.22); }
-
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: linear-gradient(135deg, #1e40af, #0e7490); color: #fff; }
+.btn-secondary { background: rgba(34, 211, 238, 0.1); color: var(--cyan); border: 1px solid rgba(34, 211, 238, 0.2); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 3px;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.chip-green { background: rgba(52, 211, 153, 0.12); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.22); }
+.chip-amber { background: rgba(251, 191, 36, 0.12); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.22); }
+.chip-blue { background: rgba(34, 211, 238, 0.12); color: var(--cyan); border: 1px solid rgba(34, 211, 238, 0.22); }
 .step-dot {
-  width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  font-family:'DM Mono',monospace; font-size:11px; font-weight:600; flex-shrink:0;
-  background:rgba(34,211,238,.12); color:var(--cyan); border:1px solid rgba(34,211,238,.22);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--cyan);
+  border: 1px solid rgba(34, 211, 238, 0.22);
 }
-.step-dot.done { background:rgba(52,211,153,.15); color:var(--green); border-color:rgba(52,211,153,.3); }
-
-.concept-output { display:none; }
-.concept-output.visible { display:block; }
-
+.step-dot.done { background: rgba(52, 211, 153, 0.15); color: var(--green); border-color: rgba(52, 211, 153, 0.3); }
+.concept-output { display: none; }
+.concept-output.visible { display: block; }
 pre {
-  font-family:'DM Mono',monospace; font-size:11px; line-height:1.7;
-  color:var(--ink2); white-space:pre-wrap; word-break:break-word; margin:0;
-  max-height:520px; overflow-y:auto;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  max-height: 520px;
+  overflow-y: auto;
 }
-pre::-webkit-scrollbar { width:4px; }
-pre::-webkit-scrollbar-track { background:transparent; }
-pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2px; }
-
-.tpl-tag { display:inline-block; margin:3px; padding:3px 9px; border-radius:3px; font-family:'DM Mono',monospace; font-size:10px; font-weight:600; text-transform:uppercase; background:rgba(34,211,238,.1); color:var(--cyan); border:1px solid rgba(34,211,238,.2); }
-
-.spin { width:16px; height:16px; border-radius:50%; border:2px solid rgba(34,211,238,.2); border-top-color:var(--cyan); animation:spin .7s linear infinite; display:inline-block; vertical-align:middle; }
-@keyframes spin { to { transform:rotate(360deg); } }
-@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-.fu { animation:fadeUp .4s ease-out both; }
-
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2px; }
-
-.tab { cursor:pointer; padding:6px 14px; border-radius:6px; font-family:'DM Mono',monospace; font-size:11px; color:var(--ink4); transition:all .15s; }
-.tab.active { background:rgba(34,211,238,.1); color:var(--cyan); }
-.tab-panel { display:none; }
-.tab-panel.active { display:block; }
+pre::-webkit-scrollbar, ::-webkit-scrollbar { width: 4px; }
+pre::-webkit-scrollbar-track, ::-webkit-scrollbar-track { background: transparent; }
+pre::-webkit-scrollbar-thumb, ::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.18); border-radius: 2px; }
+.tpl-tag {
+  display: inline-block;
+  margin: 3px;
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--cyan);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+.spin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 211, 238, 0.2);
+  border-top-color: var(--cyan);
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.fu { animation: fadeUp 0.4s ease-out both; }
+.tab {
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  color: var(--ink4);
+  transition: all 0.15s;
+}
+.tab.active { background: rgba(34, 211, 238, 0.1); color: var(--cyan); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -137,21 +219,21 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
 <div class="blob" style="bottom:-18%;right:-8%;width:520px;height:520px;background:radial-gradient(circle,rgba(59,130,246,.04) 0%,transparent 65%)"></div>
 
 <div id="auth-gate" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,11,24,.92);backdrop-filter:blur(8px)">
-  <div class="glass-hi fu" style="width:100%;max-width:340px;padding:32px">
+  <div class="glass-hi fu" style="width:100%;max-width:360px;padding:32px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
       <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#1d4ed8,#0891b2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg width="13" height="13" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
       </div>
       <div>
         <p style="font-size:14px;font-weight:700">Flowstack</p>
-        <p style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink4);letter-spacing:.12em;margin-top:2px">OPERATOR TOOLS</p>
+        <p style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink4);letter-spacing:.12em;margin-top:2px">DISCOVERY WORKSPACE</p>
       </div>
     </div>
-    <label class="label">Operator Key</label>
-    <input id="op-key" type="password" placeholder="Enter operator key" style="margin-bottom:14px"/>
-    <button class="btn btn-primary" style="width:100%" onclick="DiscoveryApp.auth()">Access Discovery Intake</button>
-    <p id="auth-err" style="display:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);margin-top:10px">Invalid key.</p>
-    <p style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink4);margin-top:18px;text-align:center">Operator-only. Not for client use.</p>
+    <label class="label">Access Token</label>
+    <input id="discovery-token" type="password" placeholder="Enter discovery access token" style="margin-bottom:14px"/>
+    <button class="btn btn-primary" style="width:100%" onclick="DiscoveryApp.auth()">Unlock Discovery Intake</button>
+    <p id="auth-err" class="hidden" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--red);margin-top:10px">Invalid token.</p>
+    <p style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink4);margin-top:18px;text-align:center">Upload business-process notes and turn them into a first-pass automation workflow concept.</p>
   </div>
 </div>
 
@@ -165,7 +247,7 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
         <span style="font-weight:700;font-size:13px">Flowstack</span>
         <span style="color:var(--ink4)">/</span>
         <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--cyan)">Discovery Intake</span>
-        <span class="chip chip-amber" style="margin-left:4px">Operator Only</span>
+        <span id="access-chip" class="chip chip-blue" style="margin-left:4px">Token Access</span>
       </div>
       <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="DiscoveryApp.logout()">Sign out</button>
     </div>
@@ -174,7 +256,7 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
   <main style="max-width:1100px;margin:0 auto;padding:32px 24px 64px">
     <div class="fu" style="margin-bottom:28px">
       <h1 style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px">Discovery Intake</h1>
-      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)">Upload or paste discovery call notes → get workflow_concept.md instantly</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)">Upload or paste business-process notes and turn them into a workflow concept automatically.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start">
@@ -186,7 +268,7 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           </div>
           <label class="label">Tenant ID</label>
           <input id="tenant-id" type="text" placeholder="e.g. palawantours_ppc" style="resize:none"/>
-          <p class="note">Lowercase, underscores only. Must match control_plane_tenant_registry.json</p>
+          <p class="note">Client tokens stay mapped to their assigned tenant. Operator access can override the tenant ID.</p>
         </div>
 
         <div class="glass fu" style="padding:20px">
@@ -202,19 +284,19 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           </div>
 
           <div id="panel-j-paste" class="tab-panel active">
-            <textarea id="journey-text" rows="8" placeholder="1. Lead arrives via Facebook Messenger DM&#10;2. Staff sees it 1-4 hours later, no notification&#10;3. Staff replies manually with a PDF menu&#10;4. Customer moves to WhatsApp&#10;5. Booking discussed over WhatsApp, no form&#10;6. Payment via GCash on tour day, no confirmation&#10;7. No follow-up — staff tries to remember"></textarea>
+            <textarea id="journey-text" rows="8" placeholder="1. Lead arrives via Facebook Messenger DM&#10;2. Staff sees it 1-4 hours later, no notification&#10;3. Staff replies manually with a PDF menu&#10;4. Customer moves to WhatsApp&#10;5. Booking discussed over WhatsApp, no form&#10;6. Payment via GCash on tour day, no confirmation&#10;7. No follow-up - staff tries to remember"></textarea>
           </div>
           <div id="panel-j-upload" class="tab-panel">
             <div class="drop-zone" id="drop-j" onclick="document.getElementById('file-j').click()"
               ondragover="event.preventDefault();this.classList.add('drag-over')"
               ondragleave="this.classList.remove('drag-over')"
               ondrop="DiscoveryApp.handleDrop(event,'j')">
-              <input type="file" id="file-j" accept=".txt,.md" style="display:none" onchange="DiscoveryApp.handleFile(this,'j')"/>
+              <input type="file" id="file-j" accept=".txt,.md,.csv,.json,.pdf,.docx" style="display:none" onchange="DiscoveryApp.handleFile(this,'j')"/>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p id="drop-j-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop journey_map.txt or click to browse</p>
+              <p id="drop-j-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop journey_map as .txt, .md, .csv, .json, .pdf, or .docx</p>
             </div>
           </div>
-          <p class="note" style="margin-top:8px">Number each step. One step per line. Plain language is fine.</p>
+          <p class="note" style="margin-top:8px">Number each step when possible. One step per line works best.</p>
         </div>
 
         <div class="glass fu" style="padding:20px">
@@ -237,8 +319,8 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
               ondragover="event.preventDefault();this.classList.add('drag-over')"
               ondragleave="this.classList.remove('drag-over')"
               ondrop="DiscoveryApp.handleDrop(event,'p')">
-              <input type="file" id="file-p" accept=".txt,.md" style="display:none" onchange="DiscoveryApp.handleFile(this,'p')"/>
-              <p id="drop-p-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop pain_points.txt or click to browse</p>
+              <input type="file" id="file-p" accept=".txt,.md,.csv,.json,.pdf,.docx" style="display:none" onchange="DiscoveryApp.handleFile(this,'p')"/>
+              <p id="drop-p-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop pain_points as .txt, .md, .csv, .json, .pdf, or .docx</p>
             </div>
           </div>
         </div>
@@ -256,15 +338,15 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           </div>
 
           <div id="panel-t-paste" class="tab-panel active">
-            <textarea id="tools-text" rows="5" placeholder="Active: Facebook Page, WhatsApp (personal), Google Sheets&#10;Not active: No CRM, no booking system, no email tool&#10;Payment: GCash QR code, in person&#10;Notes: WhatsApp is a personal number, not Business API"></textarea>
+            <textarea id="tools-text" rows="5" placeholder="Active: Facebook Page, WhatsApp Business, Google Sheets&#10;Not active: No CRM, no booking system, no email tool&#10;Payment: GCash QR code, in person"></textarea>
           </div>
           <div id="panel-t-upload" class="tab-panel">
             <div class="drop-zone" id="drop-t" onclick="document.getElementById('file-t').click()"
               ondragover="event.preventDefault();this.classList.add('drag-over')"
               ondragleave="this.classList.remove('drag-over')"
               ondrop="DiscoveryApp.handleDrop(event,'t')">
-              <input type="file" id="file-t" accept=".txt,.md" style="display:none" onchange="DiscoveryApp.handleFile(this,'t')"/>
-              <p id="drop-t-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop tools_inventory.txt or click to browse</p>
+              <input type="file" id="file-t" accept=".txt,.md,.csv,.json,.pdf,.docx" style="display:none" onchange="DiscoveryApp.handleFile(this,'t')"/>
+              <p id="drop-t-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink4)">Drop tools_inventory as .txt, .md, .csv, .json, .pdf, or .docx</p>
             </div>
           </div>
         </div>
@@ -273,7 +355,7 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           Generate Workflow Concept
         </button>
 
-        <p id="submit-err" style="display:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);text-align:center"></p>
+        <p id="submit-err" class="hidden" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--red);text-align:center"></p>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:74px">
@@ -282,15 +364,15 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           <div style="display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--cyan);flex-shrink:0">01</span>
-              <p style="font-size:12px;color:var(--ink2)">Reads your three discovery inputs and maps each journey step to an n8n workflow template</p>
+              <p style="font-size:12px;color:var(--ink2)">Reads business-process inputs and maps each journey step to likely automation workflow templates.</p>
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--cyan);flex-shrink:0">02</span>
-              <p style="font-size:12px;color:var(--ink2)">Generates <code style="background:rgba(34,211,238,.1);padding:1px 5px;border-radius:3px;font-size:10px">workflow_concept.md</code> — your build spec before touching n8n</p>
+              <p style="font-size:12px;color:var(--ink2)">Generates <code style="background:rgba(34,211,238,.1);padding:1px 5px;border-radius:3px;font-size:10px">workflow_concept.md</code> as a first-pass automation blueprint before touching n8n.</p>
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--cyan);flex-shrink:0">03</span>
-              <p style="font-size:12px;color:var(--ink2)">Emails the concept doc to you and saves inputs to the Clients table in Airtable</p>
+              <p style="font-size:12px;color:var(--ink2)">Emails the concept doc to you and saves discovery inputs to Airtable when those integrations are configured.</p>
             </div>
           </div>
         </div>
@@ -300,19 +382,19 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
           <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:12px;color:var(--ink2)">Templates matched</span>
-              <span id="res-tpls" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan)">—</span>
+              <span id="res-tpls" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan)">-</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:12px;color:var(--ink2)">Journey steps</span>
-              <span id="res-steps" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan)">—</span>
+              <span id="res-steps" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan)">-</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:12px;color:var(--ink2)">Email sent</span>
-              <span id="res-email" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">—</span>
+              <span id="res-email" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">-</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:12px;color:var(--ink2)">Saved to Airtable</span>
-              <span id="res-at" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">—</span>
+              <span id="res-at" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">-</span>
             </div>
           </div>
           <div id="res-template-tags" style="margin-top:14px;display:flex;flex-wrap:wrap;gap:4px"></div>
@@ -326,14 +408,13 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
       <div class="glass" style="padding:0;overflow:hidden">
         <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.02)">
           <p style="font-size:13px;font-weight:700">workflow_concept.md</p>
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink4);letter-spacing:.1em">DRAFT — review before compile</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink4);letter-spacing:.1em">DRAFT - review before compile</span>
         </div>
         <div style="padding:20px">
           <pre id="concept-output"></pre>
         </div>
       </div>
     </div>
-
   </main>
 </div>
 
@@ -342,60 +423,104 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
   'use strict';
 
   const API = '/api/discovery';
-  let operatorKey = null;
+  const storageKey = 'flowstack_discovery_token';
+  let discoveryToken = null;
   let lastConceptMd = '';
+  const uploadedFiles = { j: null, p: null, t: null };
 
   const $ = id => document.getElementById(id);
 
-  function auth() {
-    const key = $('op-key').value.trim();
-    if (!key || key.length < 4) { $('auth-err').style.display = 'block'; return; }
-    operatorKey = key;
-    $('auth-err').style.display = 'none';
+  function setError(message) {
+    const el = $('auth-err');
+    if (!message) {
+      el.textContent = '';
+      el.classList.add('hidden');
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
+
+  async function validateToken(token) {
+    const response = await fetch(API + '?token=' + encodeURIComponent(token), {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+      },
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+
+    if (!response.ok || !payload || !payload.ok) {
+      throw new Error((payload && (payload.message || payload.error)) || 'Invalid or missing discovery token.');
+    }
+
+    return payload;
+  }
+
+  function unlockApp(payload, token) {
+    discoveryToken = token;
+    sessionStorage.setItem(storageKey, token);
+    setError('');
     $('auth-gate').style.display = 'none';
     $('app').style.display = 'block';
+
+    if (payload && payload.tenant_id && payload.tenant_id !== 'operator') {
+      $('tenant-id').value = payload.tenant_id;
+      $('tenant-id').readOnly = true;
+      $('tenant-id').style.opacity = '0.75';
+    } else {
+      $('tenant-id').readOnly = false;
+      $('tenant-id').style.opacity = '1';
+    }
+
+    $('access-chip').textContent = payload && payload.access_mode === 'operator' ? 'Operator Access' : 'Client Access';
+    $('access-chip').className = payload && payload.access_mode === 'operator' ? 'chip chip-amber' : 'chip chip-blue';
+    $('dot-1').classList.toggle('done', $('tenant-id').value.trim().length > 2);
+  }
+
+  async function auth() {
+    const token = $('discovery-token').value.trim();
+    if (!token || token.length < 3) {
+      setError('Enter a valid discovery token.');
+      return;
+    }
+
+    try {
+      const payload = await validateToken(token);
+      unlockApp(payload, token);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Token validation failed.');
+    }
   }
 
   function logout() {
-    operatorKey = null;
+    discoveryToken = null;
+    sessionStorage.removeItem(storageKey);
     $('auth-gate').style.display = 'flex';
     $('app').style.display = 'none';
-    $('op-key').value = '';
+    $('discovery-token').value = '';
+    $('tenant-id').readOnly = false;
+    $('tenant-id').style.opacity = '1';
+    setError('');
   }
 
   function switchTab(section, mode) {
-    const paste  = $(`panel-${section}-paste`);
-    const upload = $(`panel-${section}-upload`);
-    const tabP   = $(`tab-${section}-paste`);
-    const tabU   = $(`tab-${section}-upload`);
+    const paste = $('panel-' + section + '-paste');
+    const upload = $('panel-' + section + '-upload');
+    const tabP = $('tab-' + section + '-paste');
+    const tabU = $('tab-' + section + '-upload');
     paste.classList.toggle('active', mode === 'paste');
     upload.classList.toggle('active', mode === 'upload');
     tabP.classList.toggle('active', mode === 'paste');
     tabU.classList.toggle('active', mode === 'upload');
   }
 
-  function handleFile(input, section) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target.result;
-      $(`${section === 'j' ? 'journey' : section === 'p' ? 'pain' : 'tools'}-text`).value = text;
-      switchTab(section, 'paste');
-      $(`drop-${section}`).classList.add('has-file');
-      $(`drop-${section}-label`).textContent = file.name + ' loaded';
-      markDotDone(section);
-    };
-    reader.readAsText(file);
-  }
-
-  function handleDrop(e, section) {
-    e.preventDefault();
-    $(`drop-${section}`).classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const fakeInput = { files: [file] };
-    handleFile(fakeInput, section);
+  function setDropState(section, fileName) {
+    $('drop-' + section).classList.add('has-file');
+    $('drop-' + section + '-label').textContent = fileName + ' loaded';
   }
 
   function markDotDone(section) {
@@ -404,84 +529,179 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
     if (el) el.classList.add('done');
   }
 
+  function loadTextIntoField(section, fileName, text) {
+    const target = section === 'j' ? 'journey-text' : section === 'p' ? 'pain-text' : 'tools-text';
+    $(target).value = text;
+    switchTab(section, 'paste');
+    setDropState(section, fileName);
+    markDotDone(section);
+  }
+
+  function sectionToApiKey(section) {
+    if (section === 'p') return 'pain';
+    if (section === 't') return 'tools';
+    return 'journey';
+  }
+
+  function isTextLikeFile(file) {
+    return /text|json|csv/i.test(file.type || '') || /\.(txt|md|csv|json)$/i.test(file.name || '');
+  }
+
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        resolve(String((event && event.target && event.target.result) || ''));
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const result = String((event && event.target && event.target.result) || '');
+        const contentBase64 = result.includes(',') ? result.split(',').pop() : result;
+        resolve(String(contentBase64 || ''));
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFile(input, section) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    setDropState(section, file.name);
+    markDotDone(section);
+
+    try {
+      const contentBase64 = await readFileAsBase64(file);
+      uploadedFiles[section] = {
+        name: file.name,
+        type: file.type || '',
+        size: file.size || 0,
+        section: sectionToApiKey(section),
+        content_base64: contentBase64,
+      };
+
+      if (isTextLikeFile(file)) {
+        const text = await readFileAsText(file);
+        loadTextIntoField(section, file.name, text);
+      } else {
+        const label = file.name + ' ready for server-side extraction';
+        $('drop-' + section).classList.add('has-file');
+        $('drop-' + section + '-label').textContent = label;
+      }
+    } catch (error) {
+      showSubmitErr('Failed to read ' + file.name + ' before upload.');
+    }
+  }
+
+  function handleDrop(event, section) {
+    event.preventDefault();
+    $('drop-' + section).classList.remove('drag-over');
+    const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+    if (!file) return;
+    handleFile({ files: [file] }, section);
+  }
+
+  function showSubmitErr(message) {
+    const el = $('submit-err');
+    el.textContent = message;
+    el.classList.remove('hidden');
+    $('submit-btn').disabled = false;
+    $('submit-btn').textContent = 'Generate Workflow Concept';
+  }
+
   async function submit() {
     const tenantId = $('tenant-id').value.trim().replace(/[^A-Za-z0-9_\-]/g, '');
-    const journey  = $('journey-text').value.trim();
-    const pain     = $('pain-text').value.trim();
-    const tools    = $('tools-text').value.trim();
+    const journey = $('journey-text').value.trim();
+    const pain = $('pain-text').value.trim();
+    const tools = $('tools-text').value.trim();
 
-    $('submit-err').style.display = 'none';
+    $('submit-err').classList.add('hidden');
 
-    if (!tenantId) { showErr('Tenant ID is required.'); return; }
-    if (!journey)  { showErr('Journey map is required — paste or upload journey_map.txt.'); return; }
+    if (!tenantId) {
+      showSubmitErr('Tenant ID is required.');
+      return;
+    }
+    const hasJourneyUpload = Boolean(uploadedFiles.j);
+    if (!journey && !hasJourneyUpload) {
+      showSubmitErr('Journey map is required - paste text or upload a supported file.');
+      return;
+    }
 
     const btn = $('submit-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spin"></span> Generating…';
+    btn.innerHTML = '<span class="spin"></span> Generating...';
 
     try {
-      const res = await fetch(API, {
+      const response = await fetch(API, {
         method: 'POST',
         headers: {
-          'Content-Type':   'application/json',
-          'X-Operator-Key': operatorKey,
+          'Authorization': 'Bearer ' + discoveryToken,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tenant_id: tenantId, journey_map: journey, pain_points: pain, tools_inventory: tools }),
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          journey_map: journey,
+          pain_points: pain,
+          tools_inventory: tools,
+          uploaded_files: Object.keys(uploadedFiles).map(function (key) {
+            return uploadedFiles[key];
+          }).filter(Boolean),
+        }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        showErr(data.message || data.error || 'Server error — check operator key and try again.');
+      const data = await response.json();
+      if (!response.ok || !data || !data.ok) {
+        showSubmitErr((data && (data.message || data.error)) || 'Server error - check discovery access and try again.');
         return;
       }
 
       lastConceptMd = data.concept_md || '';
-
-      $('res-tpls').textContent  = data.templates?.length || '—';
-      $('res-steps').textContent = data.steps_parsed || '—';
-      $('res-email').textContent = data.email_sent ? '✓ Sent' : '— (check RESEND_API_KEY)';
+      $('res-tpls').textContent = data.templates && data.templates.length ? String(data.templates.length) : '-';
+      $('res-steps').textContent = data.steps_parsed ? String(data.steps_parsed) : '-';
+      $('res-email').textContent = data.email_sent ? 'Sent' : '- (check RESEND_API_KEY)';
       $('res-email').style.color = data.email_sent ? 'var(--green)' : 'var(--ink4)';
-      $('res-at').textContent    = data.airtable?.saved ? '✓ Saved' : '— (check Clients table)';
-      $('res-at').style.color    = data.airtable?.saved ? 'var(--green)' : 'var(--ink4)';
-
-      const tplTags = $('res-template-tags');
-      tplTags.innerHTML = (data.templates || []).map(t =>
-        `<span class="tpl-tag">${t.replace(/_/g,' ')}</span>`
-      ).join('');
-
+      $('res-at').textContent = data.airtable && data.airtable.saved ? 'Saved' : '- (check Clients table)';
+      $('res-at').style.color = data.airtable && data.airtable.saved ? 'var(--green)' : 'var(--ink4)';
+      $('res-template-tags').innerHTML = (data.templates || []).map(function (template) {
+        return '<span class="tpl-tag">' + String(template).replace(/_/g, ' ') + '</span>';
+      }).join('');
+      if (data.extraction_errors && data.extraction_errors.length) {
+        $('submit-err').textContent = data.extraction_errors.map(function (item) {
+          return item.name + ': ' + item.message;
+        }).join(' | ');
+        $('submit-err').classList.remove('hidden');
+      }
       $('status-box').style.display = 'block';
-
       $('concept-output').textContent = lastConceptMd;
-      const section = $('concept-section');
-      section.classList.add('visible');
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      ['dot-1','dot-2','dot-3','dot-4'].forEach(id => $(id).classList.add('done'));
-
-    } catch (err) {
-      showErr('Network error — is Vercel reachable?');
+      $('concept-section').classList.add('visible');
+      $('concept-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      ['dot-1', 'dot-2', 'dot-3', 'dot-4'].forEach(function (id) {
+        $(id).classList.add('done');
+      });
+    } catch (error) {
+      showSubmitErr('Network error - is Vercel reachable?');
     } finally {
       btn.disabled = false;
       btn.textContent = 'Generate Workflow Concept';
     }
   }
 
-  function showErr(msg) {
-    const el = $('submit-err');
-    el.textContent = msg;
-    el.style.display = 'block';
-    const btn = $('submit-btn');
-    btn.disabled = false;
-    btn.textContent = 'Generate Workflow Concept';
-  }
-
   function copyDoc() {
     if (!lastConceptMd) return;
-    navigator.clipboard.writeText(lastConceptMd).then(() => {
+    navigator.clipboard.writeText(lastConceptMd).then(function () {
       const btn = $('copy-btn');
       btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = 'Copy concept doc', 2000);
+      setTimeout(function () {
+        btn.textContent = 'Copy concept doc';
+      }, 2000);
     });
   }
 
@@ -489,20 +709,42 @@ pre::-webkit-scrollbar-thumb { background:rgba(34,211,238,.18); border-radius:2p
     if (!lastConceptMd) return;
     const tenantId = $('tenant-id').value.trim() || 'tenant';
     const blob = new Blob([lastConceptMd], { type: 'text/markdown' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `workflow_concept_${tenantId}.md`;
-    a.click();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'workflow_concept_' + tenantId + '.md';
+    link.click();
     URL.revokeObjectURL(url);
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    $('op-key').addEventListener('keydown', e => { if (e.key === 'Enter') auth(); });
-    $('tenant-id').addEventListener('input', () => $('dot-1').classList.toggle('done', $('tenant-id').value.trim().length > 2));
+  document.addEventListener('DOMContentLoaded', function () {
+    $('discovery-token').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') auth();
+    });
+    $('tenant-id').addEventListener('input', function () {
+      $('dot-1').classList.toggle('done', $('tenant-id').value.trim().length > 2);
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const queryToken = params.get('token');
+    const savedToken = sessionStorage.getItem(storageKey);
+    const token = queryToken || savedToken;
+    if (token) {
+      $('discovery-token').value = token;
+      auth();
+    }
   });
 
-  window.DiscoveryApp = { auth, logout, switchTab, handleFile, handleDrop, submit, copyDoc, downloadDoc };
+  window.DiscoveryApp = {
+    auth: auth,
+    logout: logout,
+    switchTab: switchTab,
+    handleFile: handleFile,
+    handleDrop: handleDrop,
+    submit: submit,
+    copyDoc: copyDoc,
+    downloadDoc: downloadDoc,
+  };
 })();
 </script>
 </body>

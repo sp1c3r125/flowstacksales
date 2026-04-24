@@ -93,6 +93,12 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <a
+              href="/dashboard/discovery.html"
+              className="inline-flex items-center rounded-lg border border-blue-400/25 bg-blue-400/10 px-3 py-2 text-xs font-mono uppercase tracking-[0.16em] text-blue-200 transition hover:border-blue-300/50 hover:bg-blue-300/15 hover:text-white"
+            >
+              Discovery Intake
+            </a>
+            <a
               href="/dashboard/portal.html"
               className="inline-flex items-center rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-3 py-2 text-xs font-mono uppercase tracking-[0.16em] text-cyan-300 transition hover:border-cyan-300/50 hover:bg-cyan-300/15 hover:text-cyan-200"
             >
