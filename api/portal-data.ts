@@ -10,6 +10,12 @@ export const config = {
 
 function resolveTokenRegistry(): Record<string, string> {
   try {
+    const singleToken = process.env.PORTAL_ACCESS_TOKEN;
+    if (singleToken) {
+      const tenantId = process.env.PORTAL_TENANT_ID || "default";
+      return { [singleToken]: tenantId };
+    }
+
     const raw = process.env.PORTAL_TOKENS;
     if (raw) return JSON.parse(raw);
   } catch {}
@@ -27,26 +33,82 @@ function validateToken(token: string): string | null {
   return registry[clean] || null;
 }
 
+async function fetchAirtableJson(url: string, pat: string): Promise<any> {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${pat}` },
+  });
+
+  if (res.ok) {
+    return res.json();
+  }
+
+  const text = await res.text();
+  const error = new Error(`Airtable fetch failed (${res.status}): ${text.slice(0, 200)}`) as Error & {
+    status?: number;
+    body?: string;
+  };
+  error.status = res.status;
+  error.body = text;
+  throw error;
+}
+
+function isRecoverableAirtableSchemaError(err: any): boolean {
+  const body = String(err?.body || "");
+  return (
+    err?.status === 422 &&
+    (/INVALID_FILTER_BY_FORMULA/i.test(body) ||
+      /INVALID_SORT/i.test(body) ||
+      /UNKNOWN_FIELD_NAME/i.test(body) ||
+      /Unknown field names/i.test(body))
+  );
+}
+
 async function fetchLeadsFromAirtable(
   pat: string,
   baseId: string,
   limit = 20
 ): Promise<any[]> {
   const table = encodeURIComponent("Leads");
-  const sort = "sort[0][field]=Created%20At&sort[0][direction]=desc";
-  const filter = "filterByFormula=NOT({Lead%20ID}%3D'')";
-  const url = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}&${sort}&${filter}`;
+  const sortFields = ["Created At", "created_at", "Created", "Timestamp"];
+  const leadIdFields = ["Lead ID", "lead_id", "ID", "LeadId"];
+  const fallbackUrl = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${pat}` },
-  });
+  let lastSchemaError: any = null;
+  for (const sortField of sortFields) {
+    for (const leadIdField of leadIdFields) {
+      const sort = `sort[0][field]=${encodeURIComponent(sortField)}&sort[0][direction]=desc`;
+      const filter = `filterByFormula=${encodeURIComponent(`NOT({${leadIdField}}='')`)}`;
+      const url = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}&${sort}&${filter}`;
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Airtable fetch failed (${res.status}): ${text.slice(0, 200)}`);
+      try {
+        const data = await fetchAirtableJson(url, pat);
+        return (data.records || []).map((rec: any) => ({
+          name: rec.fields["Name"] || "-",
+          company: rec.fields["Company"] || "-",
+          source: rec.fields["Source"] || "-",
+          package: rec.fields["Recommended Package"] || "lite",
+          status: rec.fields["Qualification Status"] || "Qualified",
+          next_action: rec.fields["Next Action"] || "-",
+          created: (rec.fields["Created At"] || rec.fields["created_at"] || "").slice(0, 10),
+          niche: rec.fields["Niche"] || "-",
+          messages_per_day: rec.fields["Messages Per Day"] || 0,
+        }));
+      } catch (err: any) {
+        if (!isRecoverableAirtableSchemaError(err)) {
+          throw err;
+        }
+        lastSchemaError = err;
+      }
+    }
   }
 
-  const data = await res.json();
+  let data: any;
+  try {
+    data = await fetchAirtableJson(fallbackUrl, pat);
+  } catch (err: any) {
+    throw lastSchemaError || err;
+  }
+
   return (data.records || []).map((rec: any) => ({
     name: rec.fields["Name"] || "-",
     company: rec.fields["Company"] || "-",
@@ -66,23 +128,39 @@ async function fetchActivitiesFromAirtable(
   limit = 10
 ): Promise<any[]> {
   const table = encodeURIComponent("Activities");
-  const sort = "sort[0][field]=event_timestamp&sort[0][direction]=desc";
-  const url = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}&${sort}`;
+  const sortFields = ["event_timestamp", "Event Timestamp", "Created At", "created_at"];
+  const fallbackUrl = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}`;
 
   try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${pat}` },
-    });
+    for (const sortField of sortFields) {
+      const sort = `sort[0][field]=${encodeURIComponent(sortField)}&sort[0][direction]=desc`;
+      const url = `https://api.airtable.com/v0/${baseId}/${table}?maxRecords=${limit}&${sort}`;
 
-    if (!res.ok) return [];
+      try {
+        const data = await fetchAirtableJson(url, pat);
+        return (data.records || []).map((rec: any) => ({
+          event: rec.fields["event_name"] || "-",
+          actor: rec.fields["actor"] || "system",
+          status: rec.fields["status"] || "success",
+          details: rec.fields["details"] || "",
+          timestamp:
+            rec.fields["event_timestamp"] || rec.fields["Event Timestamp"] || rec.fields["Created At"] || "",
+        }));
+      } catch (err: any) {
+        if (!isRecoverableAirtableSchemaError(err)) {
+          return [];
+        }
+      }
+    }
 
-    const data = await res.json();
+    const data = await fetchAirtableJson(fallbackUrl, pat);
     return (data.records || []).map((rec: any) => ({
       event: rec.fields["event_name"] || "-",
       actor: rec.fields["actor"] || "system",
       status: rec.fields["status"] || "success",
       details: rec.fields["details"] || "",
-      timestamp: rec.fields["event_timestamp"] || "",
+      timestamp:
+        rec.fields["event_timestamp"] || rec.fields["Event Timestamp"] || rec.fields["Created At"] || "",
     }));
   } catch {
     return [];
