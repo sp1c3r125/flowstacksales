@@ -71,23 +71,6 @@ export const CalculatorView: React.FC<Props> = ({ data, onUpdate, onNext }) => {
           Flowstack installs approved automation systems for lead capture, follow-up, booking, routing, and reporting.
           Start by sizing the leak in your current process.
         </p>
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a
-            href="/dashboard/discovery.html"
-            className="inline-flex items-center justify-center rounded-xl border border-blue-300/30 bg-blue-400/12 px-5 py-3 text-sm font-mono uppercase tracking-[0.16em] text-blue-200 transition hover:border-blue-200/50 hover:bg-blue-300/16 hover:text-white"
-          >
-            Open Discovery Intake
-          </a>
-          <a
-            href="/dashboard/portal.html"
-            className="inline-flex items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/12 px-5 py-3 text-sm font-mono uppercase tracking-[0.16em] text-cyan-200 transition hover:border-cyan-200/50 hover:bg-cyan-300/16 hover:text-white"
-          >
-            Open Client Dashboard
-          </a>
-          <div className="text-xs font-mono uppercase tracking-[0.14em] text-slate-500">
-            Discovery for process uploads, reporting for live dashboard access
-          </div>
-        </div>
       </div>
 
       <BentoGrid>

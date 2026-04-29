@@ -21,13 +21,13 @@ type UploadedDiscoveryFile = {
 
 function resolveDiscoveryTokenRegistry(): Record<string, string> {
   try {
-    const singleToken = process.env.DISCOVERY_ACCESS_TOKEN;
+    const singleToken = process.env.PORTAL_ACCESS_TOKEN || process.env.DISCOVERY_ACCESS_TOKEN;
     if (singleToken) {
-      const tenantId = process.env.DISCOVERY_TENANT_ID || "shared";
+      const tenantId = process.env.PORTAL_TENANT_ID || process.env.DISCOVERY_TENANT_ID || "shared";
       return { [singleToken]: tenantId };
     }
 
-    const raw = process.env.DISCOVERY_TOKENS || process.env.PORTAL_TOKENS;
+    const raw = process.env.PORTAL_TOKENS || process.env.DISCOVERY_TOKENS;
     if (raw) return JSON.parse(raw);
   } catch {}
 
