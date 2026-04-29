@@ -1,4 +1,4 @@
-﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
@@ -8,17 +8,19 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       status: 'ok',
       message: 'demo mode response',
       data: {
-        success: true,
-        payload: {
-          proposalMarkdown: 'Demo proposal summary'
-        }
-      }
+        lead: 'Juan Dela Cruz',
+        status: 'Qualified',
+        actions: [
+          { step: 'Airtable', status: 'done' },
+          { step: 'Email', status: 'sent' },
+        ],
+      },
     });
   } catch {
     return res.status(200).json({
       status: 'fallback',
       message: 'demo mode response',
-      data: {}
+      data: {},
     });
   }
 }

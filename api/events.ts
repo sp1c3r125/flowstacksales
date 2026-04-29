@@ -1,4 +1,4 @@
-﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
@@ -9,14 +9,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'demo mode response',
       data: {
         method: req.method || 'GET',
-        healthy: true
-      }
+        events: [],
+      },
     });
   } catch {
     return res.status(200).json({
       status: 'fallback',
       message: 'demo mode response',
-      data: {}
+      data: {},
     });
   }
 }
